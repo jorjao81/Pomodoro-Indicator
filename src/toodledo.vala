@@ -1,0 +1,92 @@
+/* -*- Mode: C; indent-tabs-mode: t; c-basic-offset: 4; tab-width: 4 -*- */
+/*
+ * main.c
+ * Copyright (C) Paulo Schreiner 2011 <paulo@jorjao81.com>
+ * 
+ * toodledo is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * toodledo is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License along
+ * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+using GLib;
+using Gtk;
+using Soup;
+
+public class Main : Object 
+{
+
+	/* 
+	 * Uncomment this line when you are done testing and building a tarball
+	 * or installing
+	 */
+	//const string UI_FILE = Config.PACKAGE_DATA_DIR + "/" + "gtk_foobar.ui";
+	const string UI_FILE = "src/gtk_foobar.ui";
+
+
+	public Main ()
+	{
+
+		try 
+		{
+			var builder = new Builder ();
+			builder.add_from_file (UI_FILE);
+			builder.connect_signals (this);
+
+			var window = builder.get_object ("window") as Window;
+			window.show_all ();
+		} 
+		catch (Error e) {
+			stderr.printf ("Could not load UI: %s\n", e.message);
+		} 
+
+	}
+
+	[CCode (instance_pos = -1)]
+	public void on_destroy (Widget window) 
+	{
+		Gtk.main_quit();
+	}
+
+	static int main (string[] args) 
+	{
+		Gtk.init (ref args);
+		var app = new Main ();
+
+		stdout.printf("Teste\n");
+
+		var appid = "jorjao81";
+		var token = "api4dcb3e8d19a43";
+	
+		var userid = "td4dc848c2b588e";
+		size_t size = (userid + token).length;
+		var md5 =GLib.Checksum.compute_for_string (GLib.ChecksumType.MD5, userid 
+		                                       + token, size); 
+
+		stdout.printf(@"$md5 \n");
+
+		var url = @"http://api.toodledo.com/2/account/token.php?userid=$(userid);appid=$(appid);
+vers=1;sig=$(md5)";
+
+		// create an HTTP session to twitter
+    var session = new Soup.SessionAsync ();
+    var message = new Soup.Message ("GET", url);
+
+    // send the HTTP request
+    session.send_message (message);
+
+    // output the XML result to stdout 
+    stdout.write (message.response_body.data);
+		
+		
+		return 0;
+	}
+}
