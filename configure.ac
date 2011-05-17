@@ -18,6 +18,8 @@ dnl Check for vala
 AM_PROG_VALAC([0.10.0])
 
 
+PKG_CHECK_MODULES(JSON_GLIB,json-glib-1.0)
+
 PKG_CHECK_MODULES(LIBSOUP,libsoup-2.4)
 
 PKG_CHECK_MODULES(TOODLEDO, [gtk+-3.0 ])

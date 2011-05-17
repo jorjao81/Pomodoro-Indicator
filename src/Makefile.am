@@ -11,14 +11,16 @@ AM_CPPFLAGS = \
 	-DPACKAGE_LOCALE_DIR=\""$(prefix)/$(DATADIRNAME)/locale"\" \
 	-DPACKAGE_SRC_DIR=\""$(srcdir)"\" \
 	-DPACKAGE_DATA_DIR=\""$(datadir)"\" \
-	$(TOODLEDO_CFLAGS)
+	$(TOODLEDO_CFLAGS) \
+	$(LIBSOUP_CFLAGS) \
+	$(JSON_GLIB_CFLAGS)
 
 AM_CFLAGS =\
 	 -Wall\
 	 -g
 
 VALAFLAGS =  \
-	--pkg libsoup-2.4 --thread --pkg gtk+-3.0 --vapidir . --pkg config
+	--pkg json-glib-1.0 --pkg libsoup-2.4 --thread --pkg gtk+-3.0 --vapidir . --pkg config
 
 bin_PROGRAMS = toodledo
 
@@ -28,7 +30,9 @@ toodledo_SOURCES = \
 toodledo_LDFLAGS = \
 	-Wl,--export-dynamic
 
-toodledo_LDADD = $(TOODLEDO_LIBS)
+toodledo_LDADD = $(TOODLEDO_LIBS) \
+		$(LIBSOUP_LIBS) \
+		$(JSON_GLIB_LIBS) 
 
 
 EXTRA_DIST = $(ui_DATA)

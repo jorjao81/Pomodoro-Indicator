@@ -20,8 +20,9 @@
 using GLib;
 using Gtk;
 using Soup;
+using Json;
 
-public class Main : Object 
+public class Main : GLib.Object 
 {
 
 	/* 
@@ -37,7 +38,7 @@ public class Main : Object
 
 		try 
 		{
-			var builder = new Builder ();
+			var builder = new Gtk.Builder ();
 			builder.add_from_file (UI_FILE);
 			builder.connect_signals (this);
 
@@ -85,6 +86,15 @@ vers=1;sig=$(md5)";
 
     // output the XML result to stdout 
     stdout.write (message.response_body.data);
+
+		   var parser = new Json.Parser ();
+        parser.load_from_data ((string) message.response_body.flatten ().data, -1);
+
+        Json.Object root_object = parser.get_root().get_object();
+
+		var token2 = root_object.get_string_member("token");
+
+		stdout.printf("%s", token2);
 		
 		
 		return 0;
