@@ -86,17 +86,41 @@ vers=1;sig=$(md5)";
 
     // output the XML result to stdout 
     stdout.write (message.response_body.data);
-
+	stdout.printf("\n");
+		
 		   var parser = new Json.Parser ();
         parser.load_from_data ((string) message.response_body.flatten ().data, -1);
 
         Json.Object root_object = parser.get_root().get_object();
+		var user_pw = "Agatha84";
 
 		var token2 = root_object.get_string_member("token");
+		token2 = "td4dd3384157477";
 
-		stdout.printf("%s", token2);
+		stdout.printf("%s\n", token2);
+
+		var temp = GLib.Checksum.compute_for_string(GLib.ChecksumType.MD5, user_pw, user_pw.length)
+		                        + token + token2;
+
+		var chave = GLib.Checksum.compute_for_string(GLib.ChecksumType.MD5, temp, temp.length);
 		
-		
+		stdout.printf("%s\n",chave);
+
+		url = @"http://api.toodledo.com/2/account/get.php?key=$chave";
+		message = new Soup.Message("GET", url);
+		session.send_message (message);
+
+		stdout.write (message.response_body.data);
+	    stdout.printf("\n");
+
+		// pegar tarefas
+		url = @"http://api.toodledo.com/2/tasks/get.php?key=$chave;fields=folder,star,priority";
+		message = new Soup.Message("GET", url);
+		session.send_message (message);
+
+		stdout.write (message.response_body.data);
+	    stdout.printf("\n");
+
 		return 0;
 	}
 }
