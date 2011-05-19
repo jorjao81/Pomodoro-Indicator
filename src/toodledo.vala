@@ -22,6 +22,120 @@ using Gtk;
 using Soup;
 using Json;
 
+public class Toodledo : GLib.Object
+{
+	private string userid;
+	private string password;
+	private string appid;	
+    private string apptoken;
+	private string key;
+
+	private string get_session_token() {
+		size_t size = (userid + apptoken).length;
+		var md5 =GLib.Checksum.compute_for_string (GLib.ChecksumType.MD5, userid 
+		                                       + apptoken, size); 
+
+var url = @"http://api.toodledo.com/2/account/token.php?userid=$(userid);appid=$(appid);
+vers=1;sig=$(md5)";
+
+		// create an HTTP session to twitter
+    var session = new Soup.SessionAsync ();
+    var message = new Soup.Message ("GET", url);
+
+    // send the HTTP request
+    session.send_message (message);
+
+    // output the XML result to stdout 
+    stdout.write (message.response_body.data);
+	stdout.printf("\n");
+		
+		   var parser = new Json.Parser ();
+        parser.load_from_data ((string) message.response_body.flatten ().data, -1);
+
+        Json.Object root_object = parser.get_root().get_object();
+		var user_pw = "Agatha84";
+
+		var token2 = root_object.get_string_member("token");
+
+		return token2;
+}
+
+	private string get_key() {
+		var sessiontoken = get_session_token();
+		var temp = GLib.Checksum.compute_for_string(GLib.ChecksumType.MD5, password, password.length)
+		                        + apptoken + sessiontoken;
+
+		key = GLib.Checksum.compute_for_string(GLib.ChecksumType.MD5, temp, temp.length);
+		return key;
+	}
+		
+
+	private Json.Object get_json(string url) {
+		// try to connect with old key
+		var session = new Soup.SessionAsync ();
+
+		var message = new Soup.Message("GET", url + key);
+		session.send_message (message);
+		   var parser = new Json.Parser ();
+		parser.load_from_data ((string) message.response_body.flatten ().data, -1);
+		var root_object = parser.get_root ().get_object ();
+
+		int error;
+		if ((error = (int)root_object.get_int_member ("errorCode")) == 2) {
+			stdout.printf("Error %i\n", error);
+			key = get_key();
+			message = new Soup.Message("GET", url + key);
+			session.send_message (message);
+		   	parser.load_from_data ((string) message.response_body.flatten ().data, -1);
+			root_object = parser.get_root ().get_object ();
+		}
+
+
+		return root_object;
+	}
+		
+    public void print_all_tasks() {
+		// pegar tarefas
+		var session = new Soup.SessionAsync ();
+		var url = @"http://api.toodledo.com/2/tasks/get.php?fields=folder,star,priority;key=";
+			var message = new Soup.Message("GET", url + key);
+			session.send_message (message);
+  			var parser = new Json.Parser ();
+		   	parser.load_from_data ("{\"tarefas\" : " + (string) message.response_body.flatten ().data + "}", -1);
+			var troot_object = parser.get_root ().get_object ();
+		
+		foreach (var node in troot_object.get_array_member("tarefas").get_elements ()) {
+			var geoname = node.get_object ();
+            stdout.printf ("%s\n%s\n%f\n%f\n\n",
+                          geoname.get_string_member ("title"),
+                          geoname.get_string_member ("folder"),
+                          geoname.get_double_member ("id"),
+                          geoname.get_double_member ("priority"));
+        }
+	}
+	
+	public Toodledo(string _userid, string _password) {
+		userid = _userid;
+		password = _password;
+		appid = "jorjao81";
+		apptoken = "api4dcb3e8d19a43";
+		key = "bla";
+
+		// connect to toodledo
+				var url = @"http://api.toodledo.com/2/account/get.php?key=";
+		var root = get_json(url);
+		
+		userid = root.get_string_member ("userid");
+		stdout.printf("Userid: %s\n", userid);
+
+		var alias = root.get_string_member ("alias");
+		stdout.printf("alias: %s\n", alias);
+	}
+		
+}
+
+
+
 public class Main : GLib.Object 
 {
 
@@ -64,84 +178,12 @@ public class Main : GLib.Object
 
 		stdout.printf("Teste\n");
 
-		var appid = "jorjao81";
-		var token = "api4dcb3e8d19a43";
-	
 		var userid = "td4dc848c2b588e";
-		size_t size = (userid + token).length;
-		var md5 =GLib.Checksum.compute_for_string (GLib.ChecksumType.MD5, userid 
-		                                       + token, size); 
+		var password = "Agatha84";
+		var t = new Toodledo(userid, password);
+		t.print_all_tasks();
 
-		stdout.printf(@"$md5 \n");
-
-		var url = @"http://api.toodledo.com/2/account/token.php?userid=$(userid);appid=$(appid);
-vers=1;sig=$(md5)";
-
-		// create an HTTP session to twitter
-    var session = new Soup.SessionAsync ();
-    var message = new Soup.Message ("GET", url);
-
-    // send the HTTP request
-    session.send_message (message);
-
-    // output the XML result to stdout 
-    stdout.write (message.response_body.data);
-	stdout.printf("\n");
-		
-		   var parser = new Json.Parser ();
-        parser.load_from_data ((string) message.response_body.flatten ().data, -1);
-
-        Json.Object root_object = parser.get_root().get_object();
-		var user_pw = "Agatha84";
-
-		//var token2 = root_object.get_string_member("token");
-		var token2 = "td4dd40a952dbdf";
-
-		stdout.printf("Token %s\n", token2);
-
-		var temp = GLib.Checksum.compute_for_string(GLib.ChecksumType.MD5, user_pw, user_pw.length)
-		                        + token + token2;
-
-		var chave = GLib.Checksum.compute_for_string(GLib.ChecksumType.MD5, temp, temp.length);
-		
-		stdout.printf("%s\n",chave);
-
-		url = @"http://api.toodledo.com/2/account/get.php?key=$chave";
-		message = new Soup.Message("GET", url);
-		session.send_message (message);
-
-		parser.load_from_data ((string) message.response_body.flatten ().data, -1);
-		root_object = parser.get_root ().get_object ();
-
-		userid = root_object.get_string_member ("userid");
-		stdout.printf("Userid: %s\n", userid);
-
-		var alias = root_object.get_string_member ("alias");
-		stdout.printf("alias: %s\n", alias);
-
-		// pegar tarefas
-		url = @"http://api.toodledo.com/2/tasks/get.php?key=$chave;fields=folder,star,priority";
-		message = new Soup.Message("GET", url);
-		session.send_message (message);
-
-		
-
-		stdout.write (message.response_body.data);
-	    stdout.printf("\n");
-	    stdout.printf("--------------------------------\n");
-		
-		parser.load_from_data (@"{ \"tarefas\" : $((string) message.response_body.flatten ().data) }", -1);
-		var troot_object = parser.get_root ().get_object();
-
-		foreach (var node in troot_object.get_array_member("tarefas").get_elements ()) {
-			var geoname = node.get_object ();
-            stdout.printf ("%s\n%s\n%f\n%f\n\n",
-                          geoname.get_string_member ("title"),
-                          geoname.get_string_member ("folder"),
-                          geoname.get_double_member ("id"),
-                          geoname.get_double_member ("priority"));
-        }
-		
+		stdout.printf("Bla\n");
 		return 0;
 	}
 }
