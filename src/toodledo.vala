@@ -55,9 +55,12 @@ public class ToodledoTask : GLib.Object
 	}
 
 	public ToodledoTask.from_json(Json.Object task) {
-		if(task.has_member("title")) {
-			this.title = task.get_string_member("title");
+		foreach (var member in task.get_members ()) {
+			if((string)task.get_member("member").type_name() == "gchararray") {
+				this.set_property(member, task.get_string_member(member));
+			}
 		}
+
 	}
 
 }	
