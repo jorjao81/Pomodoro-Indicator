@@ -22,6 +22,47 @@ using Gtk;
 using Soup;
 using Json;
 
+public class ToodledoTask : GLib.Object
+{
+	public string title { get; set; default = ""; } // TODO encode the & character as %26 and the ; character as %3B
+	public string tag { get; set; default = "";} // TODO ncode the & character as %26 and the ; character as %3B.
+	public int folder { get; set; default = 0; }
+	public int context { get; set; default = 0; }
+	public int goal { get; set; default = 0; }
+	public int location { get; set; default = 0; }
+	public int parent { get; set; default = 0; }
+	public int children { get; set; default = 0; }
+	//public int order { get; set; }
+	public int duedate {get; set; default = 0; }
+	public int duedatemod {get; set; default = 0; }
+	public int duetime {get; set; default = 0; }
+	public int startdate {get; set; default = 0; }
+	public int starttime {get; set; default = 0; }
+	public int remind {get; set; default = 0; }
+	public string repeat {get; set; default = ""; }
+	public int repeatfrom {get; set; default = 0; }
+	public int status {get; set; default = 0; }
+	public int length {get; set; default = 0; }
+	public int priority {get; set; default = 1; }
+	public int star {get; set; default = 0; }
+	public int modified {get; set; default = 0; }	
+	public int completed {get; set; default = 0; }	
+	public int added {get; set; default = 0; }	
+	public int timer {get; set; default = 0; }	
+	public string note {get; set; default = ""; }
+
+	public ToodledoTask() {
+	}
+
+	public ToodledoTask.from_json(Json.Object task) {
+		if(task.has_member("title")) {
+			this.title = task.get_string_member("title");
+		}
+	}
+
+}	
+		
+
 public class Toodledo : GLib.Object
 {
 	private string userid;
@@ -106,11 +147,8 @@ vers=1;sig=$(md5)";
 		
 		foreach (var node in troot_object.get_array_member("tarefas").get_elements ()) {
 			var geoname = node.get_object ();
-            stdout.printf ("%s\n%s\n%f\n%f\n\n",
-                          geoname.get_string_member ("title"),
-                          geoname.get_string_member ("folder"),
-                          geoname.get_double_member ("id"),
-                          geoname.get_double_member ("priority"));
+			var task = new ToodledoTask.from_json(geoname);
+            stdout.printf ("%s\n\n", task.title);
         }
 	}
 	
