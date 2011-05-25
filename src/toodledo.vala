@@ -21,6 +21,58 @@ using GLib;
 using Gtk;
 using Soup;
 using Json;
+using Environment;
+
+public class ToodledoConfig : GLib.Object
+{
+	public string userid { get; set; }
+	public string password { get; set; }
+	public string key {get; set; }
+
+	public ToodledoConfig() {
+		get_from_file();
+	}
+
+	private void get_from_file() {
+		 var file = File.new_for_path(Environment.get_home_dir() + @"/.toodledo/config");
+		
+		 try {
+    			// Open file for reading and wrap returned FileInputStream into a
+   				// DataInputStream, so we can read line by line
+			    int i = 0;
+    			var dis = new DataInputStream (file.read ());
+    			string line;
+    			// Read lines until end of file (null) is reached
+    			while ((line = dis.read_line (null)) != null) {
+					if(i == 0) {
+        				userid = line;
+					}
+					else if(i == 1) {
+						password = line;
+					}
+					else if(i == 2) {
+						key = line;
+					}
+					i++;
+    			}
+			} catch (Error e) {
+  				error ("%s", e.message);
+		}        
+	}
+
+	public void write_to_file() {
+		var file = File.new_for_path(Environment.get_home_dir() + @"/.toodledo/config");
+		var stream = file.replace(null, false, 0,null);
+		var data =  @"$userid\n$password\n$key\n".to_utf8();
+		stream.write(((uint8 [])data), null);
+		stream.close (null);
+	}
+
+	~ToodledoConfig() {
+		stdout.printf("in destructor\n");
+		write_to_file();
+	}
+}
 
 public class ToodledoTask : GLib.Object
 {
@@ -73,6 +125,7 @@ public class Toodledo : GLib.Object
 	private string appid;	
     private string apptoken;
 	private string key;
+	public ToodledoConfig t_config;
 
 	private string get_session_token() {
 		size_t size = (userid + apptoken).length;
@@ -128,6 +181,7 @@ vers=1;sig=$(md5)";
 		if ((error = (int)root_object.get_int_member ("errorCode")) == 2) {
 			stdout.printf("Error %i\n", error);
 			key = get_key();
+			t_config.key = key;
 			message = new Soup.Message("GET", url + key);
 			session.send_message (message);
 		   	parser.load_from_data ((string) message.response_body.flatten ().data, -1);
@@ -160,7 +214,7 @@ vers=1;sig=$(md5)";
 		password = _password;
 		appid = "jorjao81";
 		apptoken = "api4dcb3e8d19a43";
-		key = "bla";
+		t_config = new ToodledoConfig();
 
 		// connect to toodledo
 				var url = @"http://api.toodledo.com/2/account/get.php?key=";
@@ -219,12 +273,12 @@ public class Main : GLib.Object
 
 		stdout.printf("Teste\n");
 
-		var userid = "td4dc848c2b588e";
-		var password = "Agatha84";
-		var t = new Toodledo(userid, password);
+		var c = new ToodledoConfig();
+
+		var t = new Toodledo(c.userid, c.password);
 		t.print_all_tasks();
 
-		stdout.printf("Bla\n");
+		stdout.printf("key: %s\n", c.key);
 		return 0;
 	}
 }
