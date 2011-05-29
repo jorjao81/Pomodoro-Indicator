@@ -124,7 +124,6 @@ public class Toodledo : GLib.Object
 	private string password;
 	private string appid;	
     private string apptoken;
-	private string key;
 	public ToodledoConfig t_config;
 
 	private string get_session_token() {
@@ -162,7 +161,7 @@ vers=1;sig=$(md5)";
 		var temp = GLib.Checksum.compute_for_string(GLib.ChecksumType.MD5, password, password.length)
 		                        + apptoken + sessiontoken;
 
-		key = GLib.Checksum.compute_for_string(GLib.ChecksumType.MD5, temp, temp.length);
+		var key = GLib.Checksum.compute_for_string(GLib.ChecksumType.MD5, temp, temp.length);
 		return key;
 	}
 		
@@ -171,7 +170,7 @@ vers=1;sig=$(md5)";
 		// try to connect with old key
 		var session = new Soup.SessionAsync ();
 
-		var message = new Soup.Message("GET", url + key);
+		var message = new Soup.Message("GET", url + t_config.key);
 		session.send_message (message);
 		   var parser = new Json.Parser ();
 		parser.load_from_data ((string) message.response_body.flatten ().data, -1);
@@ -180,9 +179,8 @@ vers=1;sig=$(md5)";
 		int error;
 		if ((error = (int)root_object.get_int_member ("errorCode")) == 2) {
 			stdout.printf("Error %i\n", error);
-			key = get_key();
-			t_config.key = key;
-			message = new Soup.Message("GET", url + key);
+			t_config.key = get_key();
+			message = new Soup.Message("GET", url + t_config.key);
 			session.send_message (message);
 		   	parser.load_from_data ((string) message.response_body.flatten ().data, -1);
 			root_object = parser.get_root ().get_object ();
@@ -196,7 +194,7 @@ vers=1;sig=$(md5)";
 		// pegar tarefas
 		var session = new Soup.SessionAsync ();
 		var url = @"http://api.toodledo.com/2/tasks/get.php?fields=folder,star,priority;key=";
-			var message = new Soup.Message("GET", url + key);
+			var message = new Soup.Message("GET", url + t_config.key);
 			session.send_message (message);
   			var parser = new Json.Parser ();
 		   	parser.load_from_data ("{\"tarefas\" : " + (string) message.response_body.flatten ().data + "}", -1);
@@ -209,12 +207,12 @@ vers=1;sig=$(md5)";
         }
 	}
 	
-	public Toodledo(string _userid, string _password) {
-		userid = _userid;
-		password = _password;
+	public Toodledo(ToodledoConfig c) {
+		userid = c.userid;
+		password = c.password;
 		appid = "jorjao81";
 		apptoken = "api4dcb3e8d19a43";
-		t_config = new ToodledoConfig();
+		t_config = c;
 
 		// connect to toodledo
 				var url = @"http://api.toodledo.com/2/account/get.php?key=";
@@ -273,9 +271,9 @@ public class Main : GLib.Object
 
 		stdout.printf("Teste\n");
 
-		var c = new ToodledoConfig();
+		var c = new ToodledoConfig();		
 
-		var t = new Toodledo(c.userid, c.password);
+		var t = new Toodledo(c);
 		t.print_all_tasks();
 
 		stdout.printf("key: %s\n", c.key);
