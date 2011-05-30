@@ -76,43 +76,69 @@ public class ToodledoConfig : GLib.Object
 
 public class ToodledoTask : GLib.Object
 {
+	private int64 _duetime;
+	private DateTime __duetime;
 	public string title { get; set; default = ""; } // TODO encode the & character as %26 and the ; character as %3B
 	public string tag { get; set; default = "";} // TODO ncode the & character as %26 and the ; character as %3B.
-	public int folder { get; set; default = 0; }
-	public int context { get; set; default = 0; }
-	public int goal { get; set; default = 0; }
-	public int location { get; set; default = 0; }
-	public int parent { get; set; default = 0; }
-	public int children { get; set; default = 0; }
+	public int64 folder { get; set; default = 0; }
+	public int64 id { get; set; default = 0; }
+	public int64 context { get; set; default = 0; }
+	public int64 goal { get; set; default = 0; }
+	public int64 location { get; set; default = 0; }
+	public int64 parent { get; set; default = 0; }
+	public int64 children { get; set; default = 0; }
 	//public int order { get; set; }
-	public int duedate {get; set; default = 0; }
-	public int duedatemod {get; set; default = 0; }
-	public int duetime {get; set; default = 0; }
-	public int startdate {get; set; default = 0; }
-	public int starttime {get; set; default = 0; }
-	public int remind {get; set; default = 0; }
+	public int64 duedate {get; set; default = 0; }
+	public int64 duedatemod {get; set; default = 0; }
+	public DateTime duetime {
+		get { __duetime = new DateTime.from_unix_utc(_duetime); return __duetime; }
+		set { _duetime = value.to_unix(); }}
+	public int64 startdate {get; set; default = 0; }
+	public int64 starttime {get; set; default = 0; }
+	public int64 remind {get; set; default = 0; }
 	public string repeat {get; set; default = ""; }
-	public int repeatfrom {get; set; default = 0; }
-	public int status {get; set; default = 0; }
-	public int length {get; set; default = 0; }
-	public int priority {get; set; default = 1; }
-	public int star {get; set; default = 0; }
-	public int modified {get; set; default = 0; }	
-	public int completed {get; set; default = 0; }	
-	public int added {get; set; default = 0; }	
-	public int timer {get; set; default = 0; }	
+	public int64 repeatfrom {get; set; default = 0; }
+	public int64 status {get; set; default = 0; }
+	public int64 length {get; set; default = 0; }
+	public int64 priority {get; set; default = 1; }
+	public int64 star {get; set; default = 0; }
+	public int64 modified {get; set; default = 0; }	
+	public int64 completed {get; set; default = 0; }	
+	public int64 added {get; set; default = 0; }	
+	public int64 timer {get; set; default = 0; }	
 	public string note {get; set; default = ""; }
 
 	public ToodledoTask() {
 	}
 
 	public ToodledoTask.from_json(Json.Object task) {
-		foreach (var member in task.get_members ()) {
-			if((string)task.get_member("member").type_name() == "gchararray") {
-				this.set_property(member, task.get_string_member(member));
-			}
-		}
+		
+		title = task.get_string_member("title");
+		tag = task.get_string_member("tag");
+		repeat = task.get_string_member("repeat");
+		note = task.get_string_member("note");
+		id = task.get_int_member("id");
 
+		duedate = task.get_int_member("duedate");
+		_duetime = (int)task.get_int_member("duetime");
+		folder = task.get_int_member("folder");		
+		id = task.get_int_member("id");
+		context = task.get_int_member("context");
+		goal = task.get_int_member("goal");
+		location = task.get_int_member("location");
+		duedatemod = task.get_int_member("duedatemod");
+		startdate = task.get_int_member("startdate");
+		starttime = task.get_int_member("starttime");
+		remind = task.get_int_member("remind");
+		repeatfrom = task.get_int_member("repeatfrom");
+		status = task.get_int_member("status");
+		length = task.get_int_member("length");
+		priority = task.get_string_member("priority").to_int();
+		star = task.get_int_member("star");
+		modified = task.get_int_member("modified");
+		completed = task.get_int_member("completed");
+		added = task.get_int_member("added");
+		timer = task.get_int_member("timer");
 	}
 
 }	
@@ -193,18 +219,23 @@ vers=1;sig=$(md5)";
     public void print_all_tasks() {
 		// pegar tarefas
 		var session = new Soup.SessionAsync ();
-		var url = @"http://api.toodledo.com/2/tasks/get.php?fields=folder,star,priority;key=";
+		var url = @"http://api.toodledo.com/2/tasks/get.php?fields=folder,context,goal,location,tag,startdate,duedate,duedatemod,starttime,duetime,remind,repeat,status,star,priority,length,timer,added,note,parent,children,order;key=";
 			var message = new Soup.Message("GET", url + t_config.key);
 			session.send_message (message);
   			var parser = new Json.Parser ();
 		   	parser.load_from_data ("{\"tarefas\" : " + (string) message.response_body.flatten ().data + "}", -1);
 			var troot_object = parser.get_root ().get_object ();
-		
+
+		var first = true;
 		foreach (var node in troot_object.get_array_member("tarefas").get_elements ()) {
-			var geoname = node.get_object ();
-			var task = new ToodledoTask.from_json(geoname);
-            stdout.printf ("%s\n\n", task.title);
+			if(first) { first = false; }
+			else {
+				var geoname = node.get_object ();
+				var task = new ToodledoTask.from_json(geoname);
+        		stdout.printf ("%s - %s - %s\n\n", task.title, @"$(task.priority)", task.duetime.to_string());
+			}
         }
+		//stdout.printf("%s\n", (string) message.response_body.flatten ().data);
 	}
 	
 	public Toodledo(ToodledoConfig c) {
