@@ -23,6 +23,7 @@ using Soup;
 using Json;
 using Environment;
 using Sqlite;
+using Gee;
 
 public class ToodledoConfig : GLib.Object
 {
@@ -110,13 +111,47 @@ public class ToodledoTask : GLib.Object
 	public int64 timer {get; set; default = 0; }	
 	public string note {get; set; default = ""; }
 
-	private string database {get; set; default = "/home/paulo/.toodledo/toodledo.sqlite"; } 
+	private static string database {get; set; default = "/home/paulo/.toodledo/toodledo.sqlite"; } 
 
 	private ToodledoConfig config;
 
 	public ToodledoTask() {
 	}
 
+	public static Gee.List<ToodledoTask> from_sqlite() {
+		var l = new ArrayList<ToodledoTask> ();
+
+		database = "/home/paulo/.toodledo/toodledo.sqlite";
+		
+		Database db;
+
+		if (!FileUtils.test (database, FileTest.IS_REGULAR)) {
+            stderr.printf ("Database %s does not exist or is directory\n", database);
+            return null;
+        }
+
+        var rc = Database.open (database, out db);
+
+		if (rc != Sqlite.OK) {
+            stderr.printf ("Can't open database: %d, %s\n", rc, db.errmsg ());
+            return null;
+        }
+		rc = db.exec(@"SELECT * FROM tasks", (n_collumns, values, collumn_names) => { 
+			var t = new ToodledoTask();
+			t.id = values[0].to_int();
+			t.title = values[1];
+			l.add(t); return 0;}, null);
+
+		if (rc != Sqlite.OK) { 
+            stderr.printf ("SQL error: %d, %s\n", rc, db.errmsg ());
+            return null;
+        }
+
+	
+
+		return l;
+		
+	}
 	
 	public ToodledoTask.from_json(Json.Object task) {
 		
@@ -353,9 +388,17 @@ public class Main : GLib.Object
 
 		var c = new ToodledoConfig();		
 
-		var t = new Toodledo(c);
-		t.print_all_tasks();
+		//var t = new Toodledo(c);
+		//t.print_all_tasks();
 
+		var l = ToodledoTask.from_sqlite ();
+
+		stdout.printf("Teste\n");
+
+		foreach (var task in l) {
+			stdout.printf("%i - %s\n", (int)task.id, task.title);
+		}
+		
 		stdout.printf("key: %s\n", c.key);
 		return 0;
 	}
