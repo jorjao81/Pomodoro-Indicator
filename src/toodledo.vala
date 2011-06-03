@@ -22,12 +22,14 @@ using Gtk;
 using Soup;
 using Json;
 using Environment;
+using Sqlite;
 
 public class ToodledoConfig : GLib.Object
 {
 	public string userid { get; set; }
 	public string password { get; set; }
 	public string key {get; set; }
+	public string database_file {get; set; default = "~/.toodledo.sqlite"; }
 
 	public ToodledoConfig() {
 		get_from_file();
@@ -108,21 +110,25 @@ public class ToodledoTask : GLib.Object
 	public int64 timer {get; set; default = 0; }	
 	public string note {get; set; default = ""; }
 
+	private string database {get; set; default = "/home/paulo/.toodledo/toodledo.sqlite"; } 
+
+	private ToodledoConfig config;
+
 	public ToodledoTask() {
 	}
 
+	
 	public ToodledoTask.from_json(Json.Object task) {
 		
 		title = task.get_string_member("title");
 		tag = task.get_string_member("tag");
 		repeat = task.get_string_member("repeat");
 		note = task.get_string_member("note");
-		id = task.get_int_member("id");
+		id = json_get_integer(task, "id");
 
 		duedate = task.get_int_member("duedate");
 		_duetime = (int)task.get_int_member("duetime");
 		folder = task.get_int_member("folder");		
-		id = task.get_int_member("id");
 		context = task.get_int_member("context");
 		goal = task.get_int_member("goal");
 		location = task.get_int_member("location");
@@ -139,6 +145,48 @@ public class ToodledoTask : GLib.Object
 		completed = task.get_int_member("completed");
 		added = task.get_int_member("added");
 		timer = task.get_int_member("timer");
+	}
+
+	public int json_get_integer(Json.Object o, string member) {
+		int v1, v2;
+		v1 = (int)o.get_int_member(member);
+		v2 = o.get_string_member(member).to_int();
+		if(v2 > v1) {
+			return v2;
+		}
+		else {
+			return v1;
+		}
+	}
+		
+
+
+	public bool save_to_sqlite() {
+		Database db;
+
+		if (!FileUtils.test (database, FileTest.IS_REGULAR)) {
+            stderr.printf ("Database %s does not exist or is directory\n", database);
+            return false;
+        }
+
+        var rc = Database.open (database, out db);
+
+		if (rc != Sqlite.OK) {
+            stderr.printf ("Can't open database: %d, %s\n", rc, db.errmsg ());
+            return false;
+        }
+
+
+		stdout.printf(@"INSERT INTO tasks VALUES ($(id), \"$(title)\", \"\", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, \"\", 0, 0, 0, 0, 0, 0, 0, 0, 0, \"\")", null, null);
+		rc = db.exec(@"INSERT INTO tasks VALUES ($(id), \"$(title)\", \"\", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, \"\", 0, 0, 0, 0, 0, 0, 0, 0, 0, \"\")", null, null);
+
+		if (rc != Sqlite.OK) { 
+            stderr.printf ("SQL error: %d, %s\n", rc, db.errmsg ());
+            return false;
+        }
+
+		return true;
+
 	}
 
 }	
@@ -233,6 +281,7 @@ vers=1;sig=$(md5)";
 				var geoname = node.get_object ();
 				var task = new ToodledoTask.from_json(geoname);
         		stdout.printf ("%s - %s - %s\n\n", task.title, @"$(task.priority)", task.duetime.to_string());
+				task.save_to_sqlite ();
 			}
         }
 		//stdout.printf("%s\n", (string) message.response_body.flatten ().data);

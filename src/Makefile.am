@@ -13,14 +13,15 @@ AM_CPPFLAGS = \
 	-DPACKAGE_DATA_DIR=\""$(datadir)"\" \
 	$(TOODLEDO_CFLAGS) \
 	$(LIBSOUP_CFLAGS) \
-	$(JSON_GLIB_CFLAGS)
+	$(JSON_GLIB_CFLAGS) \
+	$(SQLITE3_CFLAGS)
 
 AM_CFLAGS =\
 	 -Wall\
 	 -g
 
 VALAFLAGS =  \
-	--pkg json-glib-1.0 --pkg libsoup-2.4 --thread --pkg gtk+-3.0 --vapidir . --pkg config
+	--pkg sqlite3 --pkg json-glib-1.0 --pkg libsoup-2.4 --thread --pkg gtk+-3.0 --vapidir . --pkg config
 
 bin_PROGRAMS = toodledo
 
@@ -32,7 +33,8 @@ toodledo_LDFLAGS = \
 
 toodledo_LDADD = $(TOODLEDO_LIBS) \
 		$(LIBSOUP_LIBS) \
-		$(JSON_GLIB_LIBS) 
+		$(JSON_GLIB_LIBS) \
+		$(SQLITE3_LIBS) 
 
 
 EXTRA_DIST = $(ui_DATA)
