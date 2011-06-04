@@ -137,9 +137,7 @@ public class ToodledoTask : GLib.Object
             return null;
         }
 		rc = db.exec(@"SELECT * FROM tasks", (n_collumns, values, collumn_names) => { 
-			var t = new ToodledoTask();
-			t.id = values[0].to_int();
-			t.title = values[1];
+			var t = new ToodledoTask.from_array (values);
 			l.add(t); return 0;}, null);
 
 		if (rc != Sqlite.OK) { 
@@ -152,6 +150,37 @@ public class ToodledoTask : GLib.Object
 		return l;
 		
 	}
+
+	public ToodledoTask.from_array(string[] arr) {
+		_id = arr[0].to_int();
+		_title = arr[1];
+		_tag = arr[2];
+		_folder = arr[3].to_int();
+		_context = arr[4].to_int();
+		_goal = arr[5].to_int();
+		_location = arr[6].to_int();
+		_children = arr[7].to_int();
+		_duedate = arr[8].to_int();
+		_duetime = arr[9].to_int();
+		_starttime = arr[10].to_int();
+		_remind = arr[11].to_int();
+		_repeat = arr[12];
+		_repeatfrom = arr[12].to_int();
+		_status = arr[13].to_int();
+		_length = arr[14].to_int();
+		_priority = arr[15].to_int();
+		_star = arr[16].to_int();
+		_modified = arr[17].to_int();
+		_completed = arr[18].to_int();
+		_added = arr[19].to_int();
+		_timer = arr[20].to_int();
+		_note = arr[21];
+	}
+
+	public void print () {
+		stdout.printf(@"$(id): $(title)\n%s\n------------------\n\n", duetime.to_string());
+	}
+		 
 	
 	public ToodledoTask.from_json(Json.Object task) {
 		
@@ -396,7 +425,7 @@ public class Main : GLib.Object
 		stdout.printf("Teste\n");
 
 		foreach (var task in l) {
-			stdout.printf("%i - %s\n", (int)task.id, task.title);
+			task.print();
 		}
 		
 		stdout.printf("key: %s\n", c.key);
