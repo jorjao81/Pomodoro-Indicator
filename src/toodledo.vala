@@ -328,7 +328,9 @@ vers=1;sig=$(md5)";
 		return root_object;
 	}
 		
-    public void print_all_tasks() {
+    public Gee.List<ToodledoTask> all_tasks() {
+		var l = new Gee.ArrayList<ToodledoTask> ();
+		
 		// pegar tarefas
 		var session = new Soup.SessionAsync ();
 		var url = @"http://api.toodledo.com/2/tasks/get.php?fields=folder,context,goal,location,tag,startdate,duedate,duedatemod,starttime,duetime,remind,repeat,status,star,priority,length,timer,added,note,parent,children,order;key=";
@@ -344,11 +346,11 @@ vers=1;sig=$(md5)";
 			else {
 				var geoname = node.get_object ();
 				var task = new ToodledoTask.from_json(geoname);
-        		stdout.printf ("%s - %s - %s\n\n", task.title, @"$(task.priority)", task.duetime.to_string());
-				task.save_to_sqlite ();
+        		l.add(task);
 			}
         }
 		//stdout.printf("%s\n", (string) message.response_body.flatten ().data);
+		return l;
 	}
 	
 	public Toodledo(ToodledoConfig c) {
@@ -415,20 +417,27 @@ public class Main : GLib.Object
 
 		stdout.printf("Teste\n");
 
-		var c = new ToodledoConfig();		
+		if(args[1] == "--from-server") { 
 
-		//var t = new Toodledo(c);
-		//t.print_all_tasks();
+			var c = new ToodledoConfig();		
 
-		var l = ToodledoTask.from_sqlite ();
-
-		stdout.printf("Teste\n");
-
-		foreach (var task in l) {
-			task.print();
+			var t = new Toodledo(c);
+			var l = t.all_tasks();
+			foreach(var task in l) {
+				task.print();
+			}
 		}
-		
-		stdout.printf("key: %s\n", c.key);
+		else {
+
+			var l = ToodledoTask.from_sqlite ();
+
+			stdout.printf("Teste\n");
+
+			foreach (var task in l) {
+				task.print();
+			}
+
+		}
 		return 0;
 	}
 }
