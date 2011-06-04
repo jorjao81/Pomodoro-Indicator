@@ -81,6 +81,8 @@ public class ToodledoTask : GLib.Object
 {
 	private int64 _duetime;
 	private DateTime __duetime;
+	private int64 _completed;
+	private DateTime __completed;
 	public string title { get; set; default = ""; } // TODO encode the & character as %26 and the ; character as %3B
 	public string tag { get; set; default = "";} // TODO ncode the & character as %26 and the ; character as %3B.
 	public int64 folder { get; set; default = 0; }
@@ -106,7 +108,9 @@ public class ToodledoTask : GLib.Object
 	public int64 priority {get; set; default = 1; }
 	public int64 star {get; set; default = 0; }
 	public int64 modified {get; set; default = 0; }	
-	public int64 completed {get; set; default = 0; }	
+	public DateTime completed {
+		get { __completed = new DateTime.from_unix_utc(_completed); return __completed; }
+		set { _completed = value.to_unix(); }}	
 	public int64 added {get; set; default = 0; }	
 	public int64 timer {get; set; default = 0; }	
 	public string note {get; set; default = ""; }
@@ -118,7 +122,7 @@ public class ToodledoTask : GLib.Object
 	public ToodledoTask() {
 	}
 
-	public static Gee.List<ToodledoTask> from_sqlite() {
+	public static Gee.List<ToodledoTask> from_sqlite(string arg) {
 		var l = new ArrayList<ToodledoTask> ();
 
 		database = "/home/paulo/.toodledo/toodledo.sqlite";
@@ -136,7 +140,7 @@ public class ToodledoTask : GLib.Object
             stderr.printf ("Can't open database: %d, %s\n", rc, db.errmsg ());
             return null;
         }
-		rc = db.exec(@"SELECT * FROM tasks", (n_collumns, values, collumn_names) => { 
+		rc = db.exec(@"SELECT * FROM tasks $(arg)", (n_collumns, values, collumn_names) => { 
 			var t = new ToodledoTask.from_array (values);
 			l.add(t); return 0;}, null);
 
@@ -151,6 +155,19 @@ public class ToodledoTask : GLib.Object
 		
 	}
 
+
+	public int time_expended() {
+		/* returns the time actually expended in minutes 
+		 * if TIMER contains something, use that value, else
+		 * use predicted task length */
+		if(timer > 0) {
+			return (int)timer/60;
+		}
+		else {
+			return (int)length;
+		}
+	}
+
 	public ToodledoTask.from_array(string[] arr) {
 		_id = arr[0].to_int();
 		_title = arr[1];
@@ -161,24 +178,25 @@ public class ToodledoTask : GLib.Object
 		_location = arr[6].to_int();
 		_children = arr[7].to_int();
 		_duedate = arr[8].to_int();
-		_duetime = arr[9].to_int();
-		_starttime = arr[10].to_int();
-		_remind = arr[11].to_int();
-		_repeat = arr[12];
-		_repeatfrom = arr[12].to_int();
-		_status = arr[13].to_int();
-		_length = arr[14].to_int();
-		_priority = arr[15].to_int();
-		_star = arr[16].to_int();
-		_modified = arr[17].to_int();
-		_completed = arr[18].to_int();
-		_added = arr[19].to_int();
-		_timer = arr[20].to_int();
-		_note = arr[21];
+		_duedatemod = arr[9].to_int();
+		_duetime = arr[10].to_int();
+		_starttime = arr[11].to_int();
+		_remind = arr[12].to_int();
+		_repeat = arr[13];
+		_repeatfrom = arr[14].to_int();
+		_status = arr[15].to_int();
+		_length = arr[16].to_int();
+		_priority = arr[17].to_int();
+		_star = arr[18].to_int();
+		_modified = arr[19].to_int();
+		_completed = arr[20].to_int();
+		_added = arr[21].to_int();
+		_timer = arr[22].to_int();
+		_note = arr[23];
 	}
 
 	public void print () {
-		stdout.printf(@"$(id): $(title)\n%s\nfolder: %i\tgoal: %i\tpriority: %i\n------------------\n\n", duetime.to_string(), folder, goal, priority);
+		stdout.printf(@"$(id): $(title)\n%s\n%s\ntime expended: %i min\nfolder: %i\tgoal: %i\tpriority: %i\n------------------\n\n", duetime.to_string(), completed.to_string(), time_expended (), folder, goal, priority);
 	}
 		 
 	
@@ -413,6 +431,15 @@ public class Main : GLib.Object
 		Gtk.main_quit();
 	}
 
+	static string pretty_time(int minutes) {
+		if(minutes < 60) {
+			return @"$(minutes)min";
+		}
+		else {
+			return @"$(minutes/60)h $(minutes%60)min";
+		}
+	}
+
 	static int main (string[] args) 
 	{
 		Gtk.init (ref args);
@@ -462,13 +489,20 @@ public class Main : GLib.Object
 		}		
 		else {
 
-			var l = ToodledoTask.from_sqlite ();
+			var l = ToodledoTask.from_sqlite (args[1]);
 
 			stdout.printf("Teste\n");
 
+			var now = new DateTime.now_utc();
+			int total_time = 0;
+			
 			foreach (var task in l) {
-				task.print();
+				if(task.completed.to_unix() > (now.add_days(-7)).to_unix()) {
+					task.print();
+					total_time += task.time_expended();
+				}
 			}
+			stdout.printf("\n\nTotal time %s\n", pretty_time(total_time));
 
 		}
 		return 0;
