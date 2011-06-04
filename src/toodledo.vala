@@ -30,7 +30,7 @@ public class ToodledoConfig : GLib.Object
 	public string userid { get; set; }
 	public string password { get; set; }
 	public string key {get; set; }
-	public string database_file {get; set; default = "~/.toodledo.sqlite"; }
+	public string database_file {get; set; default = Environment.get_home_dir() +"/.toodledo/toodledo.sqlite"; }
 
 	public ToodledoConfig() {
 		get_from_file();
@@ -178,43 +178,49 @@ public class ToodledoTask : GLib.Object
 	}
 
 	public void print () {
-		stdout.printf(@"$(id): $(title)\n%s\n------------------\n\n", duetime.to_string());
+		stdout.printf(@"$(id): $(title)\n%s\nfolder: %i\tgoal: %i\tpriority: %i\n------------------\n\n", duetime.to_string(), folder, goal, priority);
 	}
 		 
 	
 	public ToodledoTask.from_json(Json.Object task) {
 		
-		title = task.get_string_member("title");
-		tag = task.get_string_member("tag");
-		repeat = task.get_string_member("repeat");
-		note = task.get_string_member("note");
-		id = json_get_integer(task, "id");
+		_title = task.get_string_member("title");
+		_tag = task.get_string_member("tag");
+		_repeat = task.get_string_member("repeat");
+		_note = task.get_string_member("note");
+		_id = json_get_integer(task, "id");
 
-		duedate = task.get_int_member("duedate");
-		_duetime = (int)task.get_int_member("duetime");
-		folder = task.get_int_member("folder");		
-		context = task.get_int_member("context");
-		goal = task.get_int_member("goal");
-		location = task.get_int_member("location");
-		duedatemod = task.get_int_member("duedatemod");
-		startdate = task.get_int_member("startdate");
-		starttime = task.get_int_member("starttime");
-		remind = task.get_int_member("remind");
-		repeatfrom = task.get_int_member("repeatfrom");
-		status = task.get_int_member("status");
-		length = task.get_int_member("length");
-		priority = task.get_string_member("priority").to_int();
-		star = task.get_int_member("star");
-		modified = task.get_int_member("modified");
-		completed = task.get_int_member("completed");
-		added = task.get_int_member("added");
-		timer = task.get_int_member("timer");
+		_duedate = json_get_integer (task, "duedate");
+		_duetime = json_get_integer(task, "duetime");
+		_folder = json_get_integer(task, "folder");		
+		_context = json_get_integer (task, "context");
+		_goal = json_get_integer (task, "goal");
+		_location = json_get_integer (task, "location");
+		_duedatemod = json_get_integer (task, "duedatemod");
+		_startdate = json_get_integer (task, "startdate");
+		_starttime = json_get_integer (task, "starttime");
+		_remind = json_get_integer (task, "remind");
+		_repeatfrom = json_get_integer (task,"repeatfrom");
+		_status = json_get_integer (task, "status");
+		_length = json_get_integer (task, "length");
+		_priority = json_get_integer (task, "priority");
+		_star = json_get_integer (task, "star");
+		_modified = json_get_integer (task, "modified");
+		_completed = json_get_integer (task, "completed");
+		_added = json_get_integer (task, "added");
+		_timer = json_get_integer (task, "timer");
 	}
 
 	public int json_get_integer(Json.Object o, string member) {
 		int v1, v2;
+		if((!o.has_member(member)) || o.get_null_member(member)) {
+			return 0;
+		}
 		v1 = (int)o.get_int_member(member);
-		v2 = o.get_string_member(member).to_int();
+		if(!(o.get_string_member(member) == null) || (o.get_string_member(member) == "")) {
+			v2 = o.get_string_member(member).to_int();
+		}
+		else { v2 =0 ; }
 		if(v2 > v1) {
 			return v2;
 		}
@@ -239,10 +245,7 @@ public class ToodledoTask : GLib.Object
             stderr.printf ("Can't open database: %d, %s\n", rc, db.errmsg ());
             return false;
         }
-
-
-		stdout.printf(@"INSERT INTO tasks VALUES ($(id), \"$(title)\", \"\", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, \"\", 0, 0, 0, 0, 0, 0, 0, 0, 0, \"\")", null, null);
-		rc = db.exec(@"INSERT INTO tasks VALUES ($(id), \"$(title)\", \"\", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, \"\", 0, 0, 0, 0, 0, 0, 0, 0, 0, \"\")", null, null);
+		rc = db.exec(@"INSERT INTO tasks VALUES ($(_id), \"$(_title)\", \"$(_tag)\", $(_folder), $(_context), $(_goal), $(_location), $(_children), $(_duedate), $(_duedatemod), $(_duetime), $(_starttime), $(_remind), \"$(_repeat)\", $(_repeatfrom), $(_status), $(_length), $(_priority), $(_star), $(_modified), $(_completed), $(_added), $(_timer), \"$(_note)\")", null, null);
 
 		if (rc != Sqlite.OK) { 
             stderr.printf ("SQL error: %d, %s\n", rc, db.errmsg ());
@@ -427,6 +430,36 @@ public class Main : GLib.Object
 				task.print();
 			}
 		}
+		else if(args[1] == "--overwrite-from-server") { 
+			Database db;
+			var c = new ToodledoConfig();		
+
+				if (!FileUtils.test (c.database_file, FileTest.IS_REGULAR)) {
+			           stderr.printf ("Database %s does not exist or is directory\n", c.database_file);
+	            return 1;
+		      }
+
+		       var rc = Database.open (c.database_file, out db);
+
+			if (rc != Sqlite.OK) {
+        		stderr.printf ("Can't open database: %d, %s\n", rc, db.errmsg ());
+        		return 1;
+    		}
+
+			rc = db.exec(@"DELETE from tasks;", null, null);
+
+			if (rc != Sqlite.OK) { 
+       			stderr.printf ("SQL error: %d, %s\n", rc, db.errmsg ());
+        		return 1;
+    		}
+
+			var t = new Toodledo(c);
+			var l = t.all_tasks();
+			foreach(var task in l) {
+				task.print();
+				task.save_to_sqlite();
+			}
+		}		
 		else {
 
 			var l = ToodledoTask.from_sqlite ();
