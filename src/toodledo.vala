@@ -350,6 +350,34 @@ vers=1;sig=$(md5)";
 		stdout.printf("after: %i\n", after);
 		return l;
 	}
+
+public Gee.List<ToodledoFolder> all_folders() {
+		var l = new Gee.ArrayList<ToodledoFolder> ();
+		
+		// pegar tarefas
+		var session = new Soup.SessionAsync ();
+		var url = @"http://api.toodledo.com/2/folders/get.php?key=";
+			var message = new Soup.Message("GET", url + t_config.key);
+			session.send_message (message);
+  			var parser = new Json.Parser ();
+		   	parser.load_from_data ("{\"tarefas\" : " + (string) message.response_body.flatten ().data + "}", -1);
+			stdout.printf ("{\"tarefas\" : " + (string) message.response_body.flatten ().data + "}\n");
+			var troot_object = parser.get_root ().get_object ();
+
+		var first = true;
+		foreach (var node in troot_object.get_array_member("tarefas").get_elements ()) {
+			if(first) { first = false; }
+			else {
+				var geoname = node.get_object ();
+				var folder = new ToodledoFolder.from_json(geoname);
+				//task.config = t_config;
+        		l.add(folder);
+			}
+        }
+		//stdout.printf("%s\n", (string) message.response_body.flatten ().data);
+		//stdout.printf("after: %i\n", after);
+		return l;
+	}
 		
     public Gee.List<ToodledoTask> all_tasks() {
 		return all_tasks_after(0);
@@ -511,7 +539,14 @@ public class Main : GLib.Object
 				task.save_to_sqlite();
 			}
 			stdout.printf("%i\n", c.lastedit_task);
-		}		
+		}	
+		else if(args[1] == "--folders") {
+			stdout.printf("FOLDERS\n");
+			var l = t.all_folders ();
+			foreach(var f in l) {
+				f.print();
+			}
+		}
 		else {
 
 			var l = t.from_sqlite (args[1]);
