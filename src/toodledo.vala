@@ -27,9 +27,11 @@ using Gee;
 
 public class ToodledoConfig : GLib.Object
 {
+	private string _lastedit_task = "";
 	public string userid { get; set; }
 	public string password { get; set; }
 	public string key {get; set; }
+	public int lastedit_task {get { if(_lastedit_task == "") { return 0; } else { return _lastedit_task.to_int(); }} set { _lastedit_task = @"$value"; } }
 	public string database_file {get; set; default = Environment.get_home_dir() +"/.toodledo/toodledo.sqlite"; }
 
 	public ToodledoConfig() {
@@ -56,6 +58,9 @@ public class ToodledoConfig : GLib.Object
 					else if(i == 2) {
 						key = line;
 					}
+					else if(i == 3) {
+						_lastedit_task = line;
+					}
 					i++;
     			}
 			} catch (Error e) {
@@ -66,7 +71,7 @@ public class ToodledoConfig : GLib.Object
 	public void write_to_file() {
 		var file = File.new_for_path(Environment.get_home_dir() + @"/.toodledo/config");
 		var stream = file.replace(null, false, 0,null);
-		var data =  @"$userid\n$password\n$key\n".to_utf8();
+		var data =  @"$userid\n$password\n$key\n$(lastedit_task)\n".to_utf8();
 		stream.write(((uint8 [])data), null);
 		stream.close (null);
 	}
@@ -117,44 +122,12 @@ public class ToodledoTask : GLib.Object
 
 	private static string database {get; set; default = "/home/paulo/.toodledo/toodledo.sqlite"; } 
 
-	private ToodledoConfig config;
+	public ToodledoConfig config {get; set; }
 
 	public ToodledoTask() {
 	}
 
-	public static Gee.List<ToodledoTask> from_sqlite(string arg) {
-		var l = new ArrayList<ToodledoTask> ();
-
-		database = "/home/paulo/.toodledo/toodledo.sqlite";
-		
-		Database db;
-
-		if (!FileUtils.test (database, FileTest.IS_REGULAR)) {
-            stderr.printf ("Database %s does not exist or is directory\n", database);
-            return null;
-        }
-
-        var rc = Database.open (database, out db);
-
-		if (rc != Sqlite.OK) {
-            stderr.printf ("Can't open database: %d, %s\n", rc, db.errmsg ());
-            return null;
-        }
-		rc = db.exec(@"SELECT * FROM tasks $(arg)", (n_collumns, values, collumn_names) => { 
-			var t = new ToodledoTask.from_array (values);
-			l.add(t); return 0;}, null);
-
-		if (rc != Sqlite.OK) { 
-            stderr.printf ("SQL error: %d, %s\n", rc, db.errmsg ());
-            return null;
-        }
-
 	
-
-		return l;
-		
-	}
-
 
 	public int time_expended() {
 		/* returns the time actually expended in minutes 
@@ -196,7 +169,7 @@ public class ToodledoTask : GLib.Object
 	}
 
 	public void print () {
-		stdout.printf(@"$(id): $(title)\n%s\n%s\ntime expended: %i min\nfolder: %i\tgoal: %i\tpriority: %i\n------------------\n\n", duetime.to_string(), completed.to_string(), time_expended (), folder, goal, priority);
+		stdout.printf(@"$(id): $(title)\n%s\n%s\n%i\ntime expended: %i min\nfolder: %i\tgoal: %i\tpriority: %i\n------------------\n\n", duetime.to_string(), completed.to_string(), modified, time_expended (), folder, goal, priority);
 	}
 		 
 	
@@ -229,7 +202,7 @@ public class ToodledoTask : GLib.Object
 		_timer = json_get_integer (task, "timer");
 	}
 
-	public int json_get_integer(Json.Object o, string member) {
+	public static int json_get_integer(Json.Object o, string member) {
 		int v1, v2;
 		if((!o.has_member(member)) || o.get_null_member(member)) {
 			return 0;
@@ -263,12 +236,17 @@ public class ToodledoTask : GLib.Object
             stderr.printf ("Can't open database: %d, %s\n", rc, db.errmsg ());
             return false;
         }
-		rc = db.exec(@"INSERT INTO tasks VALUES ($(_id), \"$(_title)\", \"$(_tag)\", $(_folder), $(_context), $(_goal), $(_location), $(_children), $(_duedate), $(_duedatemod), $(_duetime), $(_starttime), $(_remind), \"$(_repeat)\", $(_repeatfrom), $(_status), $(_length), $(_priority), $(_star), $(_modified), $(_completed), $(_added), $(_timer), \"$(_note)\")", null, null);
+		rc = db.exec(@"DELETE FROM TASKS WHERE id = $id; INSERT INTO tasks VALUES ($(_id), \"$(_title)\", \"$(_tag)\", $(_folder), $(_context), $(_goal), $(_location), $(_children), $(_duedate), $(_duedatemod), $(_duetime), $(_starttime), $(_remind), \"$(_repeat)\", $(_repeatfrom), $(_status), $(_length), $(_priority), $(_star), $(_modified), $(_completed), $(_added), $(_timer), \"$(_note)\")", null, null);
 
 		if (rc != Sqlite.OK) { 
             stderr.printf ("SQL error: %d, %s\n", rc, db.errmsg ());
             return false;
         }
+
+		/* update lastedit */
+		if (_modified > config.lastedit_task) {
+			config.lastedit_task = (int)_modified;
+		}
 
 		return true;
 
@@ -283,6 +261,7 @@ public class Toodledo : GLib.Object
 	private string password;
 	private string appid;	
     private string apptoken;
+	public int lastedit_task;
 	public ToodledoConfig t_config;
 
 	private string get_session_token() {
@@ -299,10 +278,6 @@ vers=1;sig=$(md5)";
 
     // send the HTTP request
     session.send_message (message);
-
-    // output the XML result to stdout 
-    stdout.write (message.response_body.data);
-	stdout.printf("\n");
 		
 		   var parser = new Json.Parser ();
         parser.load_from_data ((string) message.response_body.flatten ().data, -1);
@@ -348,13 +323,13 @@ vers=1;sig=$(md5)";
 
 		return root_object;
 	}
-		
-    public Gee.List<ToodledoTask> all_tasks() {
+
+	public Gee.List<ToodledoTask> all_tasks_after(int after) {
 		var l = new Gee.ArrayList<ToodledoTask> ();
 		
 		// pegar tarefas
 		var session = new Soup.SessionAsync ();
-		var url = @"http://api.toodledo.com/2/tasks/get.php?fields=folder,context,goal,location,tag,startdate,duedate,duedatemod,starttime,duetime,remind,repeat,status,star,priority,length,timer,added,note,parent,children,order;key=";
+		var url = @"http://api.toodledo.com/2/tasks/get.php?modafter=$(after);fields=folder,context,goal,location,tag,startdate,duedate,duedatemod,starttime,duetime,remind,repeat,status,star,priority,length,timer,added,note,parent,children,order;key=";
 			var message = new Soup.Message("GET", url + t_config.key);
 			session.send_message (message);
   			var parser = new Json.Parser ();
@@ -367,11 +342,17 @@ vers=1;sig=$(md5)";
 			else {
 				var geoname = node.get_object ();
 				var task = new ToodledoTask.from_json(geoname);
+				task.config = t_config;
         		l.add(task);
 			}
         }
 		//stdout.printf("%s\n", (string) message.response_body.flatten ().data);
+		stdout.printf("after: %i\n", after);
 		return l;
+	}
+		
+    public Gee.List<ToodledoTask> all_tasks() {
+		return all_tasks_after(0);
 	}
 	
 	public Toodledo(ToodledoConfig c) {
@@ -390,7 +371,46 @@ vers=1;sig=$(md5)";
 
 		var alias = root.get_string_member ("alias");
 		stdout.printf("alias: %s\n", alias);
+
+		lastedit_task = ToodledoTask.json_get_integer (root, "lastedit_task");
+		stdout.printf("Lastedit task: %i\n", lastedit_task);
 	}
+
+public Gee.List<ToodledoTask> from_sqlite(string arg) {
+		var l = new ArrayList<ToodledoTask> ();
+
+		var database = "/home/paulo/.toodledo/toodledo.sqlite";
+	    var c = t_config;
+		
+		Database db;
+
+		if (!FileUtils.test (database, FileTest.IS_REGULAR)) {
+            stderr.printf ("Database %s does not exist or is directory\n", database);
+            return null;
+        }
+
+        var rc = Database.open (database, out db);
+
+		if (rc != Sqlite.OK) {
+            stderr.printf ("Can't open database: %d, %s\n", rc, db.errmsg ());
+            return null;
+        }
+		rc = db.exec(@"SELECT * FROM tasks $(arg)", (n_collumns, values, collumn_names) => { 
+			var t = new ToodledoTask.from_array (values);
+			t.config = c;
+			l.add(t); return 0;}, null);
+
+		if (rc != Sqlite.OK) { 
+            stderr.printf ("SQL error: %d, %s\n", rc, db.errmsg ());
+            return null;
+        }
+
+	
+
+		return l;
+		
+	}
+
 		
 }
 
@@ -446,12 +466,12 @@ public class Main : GLib.Object
 		var app = new Main ();
 
 		stdout.printf("Teste\n");
+	
+		var c = new ToodledoConfig();		
+		var t = new Toodledo(c);
+
 
 		if(args[1] == "--from-server") { 
-
-			var c = new ToodledoConfig();		
-
-			var t = new Toodledo(c);
 			var l = t.all_tasks();
 			foreach(var task in l) {
 				task.print();
@@ -459,8 +479,6 @@ public class Main : GLib.Object
 		}
 		else if(args[1] == "--overwrite-from-server") { 
 			Database db;
-			var c = new ToodledoConfig();		
-
 				if (!FileUtils.test (c.database_file, FileTest.IS_REGULAR)) {
 			           stderr.printf ("Database %s does not exist or is directory\n", c.database_file);
 	            return 1;
@@ -480,16 +498,23 @@ public class Main : GLib.Object
         		return 1;
     		}
 
-			var t = new Toodledo(c);
 			var l = t.all_tasks();
 			foreach(var task in l) {
 				task.print();
 				task.save_to_sqlite();
 			}
 		}		
+		else if(args[1] == "--sync") { 
+			var l = t.all_tasks_after(c.lastedit_task);
+			foreach(var task in l) {
+				task.print();
+				task.save_to_sqlite();
+			}
+			stdout.printf("%i\n", c.lastedit_task);
+		}		
 		else {
 
-			var l = ToodledoTask.from_sqlite (args[1]);
+			var l = t.from_sqlite (args[1]);
 
 			stdout.printf("Teste\n");
 
