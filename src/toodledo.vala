@@ -169,7 +169,16 @@ public class ToodledoTask : GLib.Object
 	}
 
 	public void print () {
-		stdout.printf(@"$(id): $(title)\n%s\n%s\n%i\ntime expended: %i min\nfolder: %i\tgoal: %i\tpriority: %i\n------------------\n\n", duetime.to_string(), completed.to_string(), modified, time_expended (), folder, goal, priority);
+			stdout.printf("%i\n", (int)folder);
+			 var folder = ToodledoFolder.mapa[(int)folder];
+			var foldername = folder.name;		
+			//stdout.printf(@"$foldername\n");
+			stdout.printf(@"$(id): $(title)\n%s\n%s\n%i\ntime expended: %i min\nfolder: $(foldername)\tgoal: %i\tpriority: %i\n------------------\n\n", duetime.to_string(), completed.to_string(), modified, time_expended (), goal, priority);
+	}
+	public void print2 (Gee.Map<int, ToodledoFolder> mapa) {
+		var foldername = mapa[(int)id].name;
+		stdout.printf(@"$foldername\n");
+		//stdout.printf(@"$(id): $(title)\n%s\n%s\n%i\ntime expended: %i min\nfolder: %s\tgoal: %i\tpriority: %i\n------------------\n\n", duetime.to_string(), completed.to_string(), modified, time_expended (), ToodledoFolder.map[(int)folder].name, goal, priority);
 	}
 		 
 	
@@ -263,6 +272,7 @@ public class Toodledo : GLib.Object
     private string apptoken;
 	public int lastedit_task;
 	public ToodledoConfig t_config;
+	public HashMap<int,ToodledoFolder> folders;
 
 	private string get_session_token() {
 		size_t size = (userid + apptoken).length;
@@ -364,7 +374,7 @@ public Gee.List<ToodledoFolder> all_folders() {
 			stdout.printf ("{\"tarefas\" : " + (string) message.response_body.flatten ().data + "}\n");
 			var troot_object = parser.get_root ().get_object ();
 
-		var first = true;
+		var first = false;
 		foreach (var node in troot_object.get_array_member("tarefas").get_elements ()) {
 			if(first) { first = false; }
 			else {
@@ -372,10 +382,14 @@ public Gee.List<ToodledoFolder> all_folders() {
 				var folder = new ToodledoFolder.from_json(geoname);
 				//task.config = t_config;
         		l.add(folder);
+				folders[folder.id] = folder;
 			}
         }
 		//stdout.printf("%s\n", (string) message.response_body.flatten ().data);
 		//stdout.printf("after: %i\n", after);
+		folders[0] = new ToodledoFolder();
+		folders[0].name = "None";
+		ToodledoFolder.mapa = folders;
 		return l;
 	}
 		
@@ -389,6 +403,8 @@ public Gee.List<ToodledoFolder> all_folders() {
 		appid = "jorjao81";
 		apptoken = "api4dcb3e8d19a43";
 		t_config = c;
+
+		folders = new HashMap<int,ToodledoFolder>();
 
 		// connect to toodledo
 				var url = @"http://api.toodledo.com/2/account/get.php?key=";
@@ -498,6 +514,10 @@ public class Main : GLib.Object
 		var c = new ToodledoConfig();		
 		var t = new Toodledo(c);
 
+		t.all_folders (); /* to initialize id -> folder mapping */
+		foreach (var s in t.folders.keys) {
+    		stdout.printf (@"%i - $(t.folders[s].name)\n", s);
+		}
 
 		if(args[1] == "--from-server") { 
 			var l = t.all_tasks();

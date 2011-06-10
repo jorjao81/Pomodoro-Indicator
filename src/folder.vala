@@ -33,9 +33,9 @@ using Gee;
 	public int archived { get; set; default = 0; }
 	public int ord { get; set; default = 0; }
 	public int private { get; set; default = 0; }
-	
+
 	/* we want to store all folders in memory indexed by id */
-	public static Gee.Map<int, ToodledoFolder> map;
+	public static Gee.HashMap<int, ToodledoFolder> mapa = new Gee.HashMap<int, ToodledoFolder>();
 
 	private static string database {get; set; default = "/home/paulo/.toodledo/toodledo.sqlite"; } 
 
@@ -51,17 +51,14 @@ using Gee;
 		 
 	
 	public ToodledoFolder.from_json(Json.Object task) {
-
-		map = new HashMap<int,ToodledoFolder>();
-		
 		_name = task.get_string_member("name");
 		_private = json_get_integer(task, "private");
 		_archived = json_get_integer(task, "archived");
 		_ord = json_get_integer(task, "ord");
 		_id = json_get_integer(task, "id");
 
-		map.set(id, this);
-	}
+
+		mapa.set(id, this);	}
 
 	public static int json_get_integer(Json.Object o, string member) {
 		int v1, v2;
