@@ -173,7 +173,7 @@ public class ToodledoTask : GLib.Object
 			 var folder = ToodledoFolder.mapa[(int)folder];
 			var foldername = folder.name;		
 			//stdout.printf(@"$foldername\n");
-			stdout.printf(@"$(id): $(title)\n%s\n%s\n%i\ntime expended: %i min\nfolder: $(foldername)\tgoal: %i\tpriority: %i\n------------------\n\n", duetime.to_string(), completed.to_string(), modified, time_expended (), goal, priority);
+			stdout.printf(@"$(id): $(title)\n%s\n%s\n%i\ntime expended: $(time_expended ()) min\nfolder: $(foldername)\tgoal: %i\tpriority: %i\n------------------\n\n", duetime.to_string(), completed.to_string(), modified, goal, priority);
 	}
 	public void print2 (Gee.Map<int, ToodledoFolder> mapa) {
 		var foldername = mapa[(int)id].name;
