@@ -137,7 +137,10 @@ public class ToodledoTask : GLib.Object
 			return (int)timer/60;
 		}
 		else {
-			return (int)length;
+			if (completed.to_unix() > 0) {
+				return (int)length;
+			}
+			else { return 0; }
 		}
 	}
 
@@ -168,10 +171,16 @@ public class ToodledoTask : GLib.Object
 		_note = arr[23];
 	}
 
+	public string foldername() {
+		var folder = ToodledoFolder.mapa[(int)folder];
+		var foldername = folder.name;
+		return foldername;
+	}
+
 	public void print () {
 			stdout.printf("%i\n", (int)folder);
 			 var folder = ToodledoFolder.mapa[(int)folder];
-			var foldername = folder.name;		
+		var foldername = folder.name;		
 			//stdout.printf(@"$foldername\n");
 			stdout.printf(@"$(id): $(title)\n%s\n%s\n%i\ntime expended: $(time_expended ()) min\nfolder: $(foldername)\tgoal: %i\tpriority: %i\n------------------\n\n", duetime.to_string(), completed.to_string(), modified, goal, priority);
 	}
@@ -514,9 +523,11 @@ public class Main : GLib.Object
 		var c = new ToodledoConfig();		
 		var t = new Toodledo(c);
 
+		var map = new HashMap<string, int> ();
 		t.all_folders (); /* to initialize id -> folder mapping */
 		foreach (var s in t.folders.keys) {
     		stdout.printf (@"%i - $(t.folders[s].name)\n", s);
+			map[t.folders[s].name] = 0; // inicializar
 		}
 
 		if(args[1] == "--from-server") { 
@@ -575,12 +586,19 @@ public class Main : GLib.Object
 
 			var now = new DateTime.now_utc();
 			int total_time = 0;
+
 			
 			foreach (var task in l) {
-				if(task.completed.to_unix() > (now.add_days(-7)).to_unix()) {
+				if((task.completed.to_unix() > (now.add_days(-7)).to_unix())
+				   || (task.completed.to_unix() == 0)) {
+
 					task.print();
+					map[task.foldername()] = map[task.foldername()] + task.time_expended();
 					total_time += task.time_expended();
 				}
+			}
+			foreach (var entry in map.entries) {
+    			stdout.printf ("%s => %d min\n", entry.key, entry.value);
 			}
 			stdout.printf("\n\nTotal time %s\n", pretty_time(total_time));
 
