@@ -582,11 +582,12 @@ public class Main : GLib.Object
                 var label = new Label("Hello, world!");
                 win.add(label);
 
-                var indicator = new Indicator(win.title, "indicator-messages",
+                var indicator = new Indicator(win.title, "green-tomato",
                                               IndicatorCategory.APPLICATION_STATUS);
-
                 indicator.set_status(IndicatorStatus.ACTIVE);
-                indicator.set_attention_icon("indicator-messages-new");
+				indicator.set_icon_theme_path("/home/paulo/toodledo/icons");
+                indicator.set_attention_icon("red-tomato");
+			
 
                 var menu = new Menu();
 
