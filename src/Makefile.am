@@ -28,7 +28,8 @@ VALAFLAGS =  \
 bin_PROGRAMS = toodledo
 
 toodledo_SOURCES = \
-	toodledo.vala
+	toodledo.vala \
+	folder.vala
 
 toodledo_LDFLAGS = \
 	-Wl,--export-dynamic

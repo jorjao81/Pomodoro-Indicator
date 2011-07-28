@@ -138,7 +138,10 @@ public class ToodledoTask : GLib.Object
 			return (int)timer/60;
 		}
 		else {
-			return (int)length;
+			if (completed.to_unix() > 0) {
+				return (int)length;
+			}
+			else { return 0; }
 		}
 	}
 
@@ -169,8 +172,23 @@ public class ToodledoTask : GLib.Object
 		_note = arr[23];
 	}
 
+	public string foldername() {
+		var folder = ToodledoFolder.mapa[(int)folder];
+		var foldername = folder.name;
+		return foldername;
+	}
+
 	public void print () {
-		stdout.printf(@"$(id): $(title)\n%s\n%s\n%i\ntime expended: %i min\nfolder: %i\tgoal: %i\tpriority: %i\n------------------\n\n", duetime.to_string(), completed.to_string(), modified, time_expended (), folder, goal, priority);
+			stdout.printf("%i\n", (int)folder);
+			 var folder = ToodledoFolder.mapa[(int)folder];
+		var foldername = folder.name;		
+			//stdout.printf(@"$foldername\n");
+			stdout.printf(@"$(id): $(title)\n%s\n%s\n%i\ntime expended: $(time_expended ()) min\nfolder: $(foldername)\tgoal: %i\tpriority: %i\n------------------\n\n", duetime.to_string(), completed.to_string(), modified, goal, priority);
+	}
+	public void print2 (Gee.Map<int, ToodledoFolder> mapa) {
+		var foldername = mapa[(int)id].name;
+		stdout.printf(@"$foldername\n");
+		//stdout.printf(@"$(id): $(title)\n%s\n%s\n%i\ntime expended: %i min\nfolder: %s\tgoal: %i\tpriority: %i\n------------------\n\n", duetime.to_string(), completed.to_string(), modified, time_expended (), ToodledoFolder.map[(int)folder].name, goal, priority);
 	}
 		 
 	
@@ -264,6 +282,7 @@ public class Toodledo : GLib.Object
     private string apptoken;
 	public int lastedit_task;
 	public ToodledoConfig t_config;
+	public HashMap<int,ToodledoFolder> folders;
 
 	private string get_session_token() {
 		size_t size = (userid + apptoken).length;
@@ -351,6 +370,38 @@ vers=1;sig=$(md5)";
 		stdout.printf("after: %i\n", after);
 		return l;
 	}
+
+public Gee.List<ToodledoFolder> all_folders() {
+		var l = new Gee.ArrayList<ToodledoFolder> ();
+		
+		// pegar tarefas
+		var session = new Soup.SessionAsync ();
+		var url = @"http://api.toodledo.com/2/folders/get.php?key=";
+			var message = new Soup.Message("GET", url + t_config.key);
+			session.send_message (message);
+  			var parser = new Json.Parser ();
+		   	parser.load_from_data ("{\"tarefas\" : " + (string) message.response_body.flatten ().data + "}", -1);
+			stdout.printf ("{\"tarefas\" : " + (string) message.response_body.flatten ().data + "}\n");
+			var troot_object = parser.get_root ().get_object ();
+
+		var first = false;
+		foreach (var node in troot_object.get_array_member("tarefas").get_elements ()) {
+			if(first) { first = false; }
+			else {
+				var geoname = node.get_object ();
+				var folder = new ToodledoFolder.from_json(geoname);
+				//task.config = t_config;
+        		l.add(folder);
+				folders[folder.id] = folder;
+			}
+        }
+		//stdout.printf("%s\n", (string) message.response_body.flatten ().data);
+		//stdout.printf("after: %i\n", after);
+		folders[0] = new ToodledoFolder();
+		folders[0].name = "None";
+		ToodledoFolder.mapa = folders;
+		return l;
+	}
 		
     public Gee.List<ToodledoTask> all_tasks() {
 		return all_tasks_after(0);
@@ -362,6 +413,8 @@ vers=1;sig=$(md5)";
 		appid = "jorjao81";
 		apptoken = "api4dcb3e8d19a43";
 		t_config = c;
+
+		folders = new HashMap<int,ToodledoFolder>();
 
 		// connect to toodledo
 				var url = @"http://api.toodledo.com/2/account/get.php?key=";
@@ -471,6 +524,12 @@ public class Main : GLib.Object
 		var c = new ToodledoConfig();		
 		var t = new Toodledo(c);
 
+		var map = new HashMap<string, int> ();
+		t.all_folders (); /* to initialize id -> folder mapping */
+		foreach (var s in t.folders.keys) {
+    		stdout.printf (@"%i - $(t.folders[s].name)\n", s);
+			map[t.folders[s].name] = 0; // inicializar
+		}
 
 		if(args[1] == "--from-server") { 
 			var l = t.all_tasks();
@@ -552,6 +611,13 @@ public class Main : GLib.Object
                 Gtk.main();
                 return 0;
 		}
+		else if(args[1] == "--folders") {
+			stdout.printf("FOLDERS\n");
+			var l = t.all_folders ();
+			foreach(var f in l) {
+				f.print();
+			}
+		}
 		else {
 
 			var l = t.from_sqlite (args[1]);
@@ -560,12 +626,19 @@ public class Main : GLib.Object
 
 			var now = new DateTime.now_utc();
 			int total_time = 0;
+
 			
 			foreach (var task in l) {
-				if(task.completed.to_unix() > (now.add_days(-7)).to_unix()) {
+				if((task.completed.to_unix() > (now.add_days(-7)).to_unix())
+				   || (task.completed.to_unix() == 0)) {
+
 					task.print();
+					map[task.foldername()] = map[task.foldername()] + task.time_expended();
 					total_time += task.time_expended();
 				}
+			}
+			foreach (var entry in map.entries) {
+    			stdout.printf ("%s => %d min\n", entry.key, entry.value);
 			}
 			stdout.printf("\n\nTotal time %s\n", pretty_time(total_time));
 
