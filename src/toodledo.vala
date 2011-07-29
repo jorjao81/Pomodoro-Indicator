@@ -2,12 +2,12 @@
 /*
  * main.c
  * Copyright (C) Paulo Schreiner 2011 <paulo@jorjao81.com>
- * 
+	 * 
  * toodledo is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
  * Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+	 * 
  * toodledo is distributed in the hope that it will be useful, but
  * WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
@@ -26,6 +26,24 @@ using Sqlite;
 using Gee;
 using AppIndicator;
 
+[DBus (name = "im.pidgin.purple.PurpleInterface")]
+interface Purple : GLib.Object {
+	public signal void received_im_msg (int account, string sender, string msg,
+	                                    int conv, uint flags);
+
+	public abstract int[] purple_accounts_get_all_active () throws IOError;
+	public abstract string purple_account_get_username (int account) throws IOError;
+
+	public abstract int purple_savedstatus_new (string message, int status) throws IOError;
+	public abstract void purple_savedstatus_activate(int status) throws IOError;
+	public abstract void purple_savedstatus_set_message(int status, string s) throws IOError;
+	public abstract int purple_savedstatus_get_current() throws IOError;
+	public abstract void purple_savedstatus_set_type(int status, int tipo ) throws IOError;
+}
+
+
+
+
 public class ToodledoConfig : GLib.Object
 {
 	private string _lastedit_task = "";
@@ -40,32 +58,32 @@ public class ToodledoConfig : GLib.Object
 	}
 
 	private void get_from_file() {
-		 var file = File.new_for_path(Environment.get_home_dir() + @"/.toodledo/config");
-		
-		 try {
-    			// Open file for reading and wrap returned FileInputStream into a
-   				// DataInputStream, so we can read line by line
-			    int i = 0;
-    			var dis = new DataInputStream (file.read ());
-    			string line;
-    			// Read lines until end of file (null) is reached
-    			while ((line = dis.read_line (null)) != null) {
-					if(i == 0) {
-        				userid = line;
-					}
-					else if(i == 1) {
-						password = line;
-					}
-					else if(i == 2) {
-						key = line;
-					}
-					else if(i == 3) {
-						_lastedit_task = line;
-					}
-					i++;
-    			}
-			} catch (Error e) {
-  				error ("%s", e.message);
+		var file = File.new_for_path(Environment.get_home_dir() + @"/.toodledo/config");
+
+		try {
+			// Open file for reading and wrap returned FileInputStream into a
+			// DataInputStream, so we can read line by line
+			int i = 0;
+			var dis = new DataInputStream (file.read ());
+			string line;
+			// Read lines until end of file (null) is reached
+			while ((line = dis.read_line (null)) != null) {
+				if(i == 0) {
+					userid = line;
+				}
+				else if(i == 1) {
+					password = line;
+				}
+				else if(i == 2) {
+					key = line;
+				}
+				else if(i == 3) {
+					_lastedit_task = line;
+				}
+				i++;
+			}
+		} catch (Error e) {
+			error ("%s", e.message);
 		}        
 	}
 
@@ -128,7 +146,7 @@ public class ToodledoTask : GLib.Object
 	public ToodledoTask() {
 	}
 
-	
+
 
 	public int time_expended() {
 		/* returns the time actually expended in minutes 
@@ -179,21 +197,21 @@ public class ToodledoTask : GLib.Object
 	}
 
 	public void print () {
-			stdout.printf("%i\n", (int)folder);
-			 var folder = ToodledoFolder.mapa[(int)folder];
+		stdout.printf("%i\n", (int)folder);
+		var folder = ToodledoFolder.mapa[(int)folder];
 		var foldername = folder.name;		
-			//stdout.printf(@"$foldername\n");
-			stdout.printf(@"$(id): $(title)\n%s\n%s\n%i\ntime expended: $(time_expended ()) min\nfolder: $(foldername)\tgoal: %i\tpriority: %i\n------------------\n\n", duetime.to_string(), completed.to_string(), modified, goal, priority);
+		//stdout.printf(@"$foldername\n");
+		stdout.printf(@"$(id): $(title)\n%s\n%s\n%i\ntime expended: $(time_expended ()) min\nfolder: $(foldername)\tgoal: %i\tpriority: %i\n------------------\n\n", duetime.to_string(), completed.to_string(), modified, goal, priority);
 	}
 	public void print2 (Gee.Map<int, ToodledoFolder> mapa) {
 		var foldername = mapa[(int)id].name;
 		stdout.printf(@"$foldername\n");
 		//stdout.printf(@"$(id): $(title)\n%s\n%s\n%i\ntime expended: %i min\nfolder: %s\tgoal: %i\tpriority: %i\n------------------\n\n", duetime.to_string(), completed.to_string(), modified, time_expended (), ToodledoFolder.map[(int)folder].name, goal, priority);
 	}
-		 
-	
+
+
 	public ToodledoTask.from_json(Json.Object task) {
-		
+
 		_title = task.get_string_member("title");
 		_tag = task.get_string_member("tag");
 		_repeat = task.get_string_member("repeat");
@@ -238,29 +256,29 @@ public class ToodledoTask : GLib.Object
 			return v1;
 		}
 	}
-		
+
 
 
 	public bool save_to_sqlite() {
 		Database db;
 
 		if (!FileUtils.test (database, FileTest.IS_REGULAR)) {
-            stderr.printf ("Database %s does not exist or is directory\n", database);
-            return false;
-        }
+			stderr.printf ("Database %s does not exist or is directory\n", database);
+			return false;
+		}
 
-        var rc = Database.open (database, out db);
+		var rc = Database.open (database, out db);
 
 		if (rc != Sqlite.OK) {
-            stderr.printf ("Can't open database: %d, %s\n", rc, db.errmsg ());
-            return false;
-        }
+			stderr.printf ("Can't open database: %d, %s\n", rc, db.errmsg ());
+			return false;
+		}
 		rc = db.exec(@"DELETE FROM TASKS WHERE id = $id; INSERT INTO tasks VALUES ($(_id), \"$(_title)\", \"$(_tag)\", $(_folder), $(_context), $(_goal), $(_location), $(_children), $(_duedate), $(_duedatemod), $(_duetime), $(_starttime), $(_remind), \"$(_repeat)\", $(_repeatfrom), $(_status), $(_length), $(_priority), $(_star), $(_modified), $(_completed), $(_added), $(_timer), \"$(_note)\")", null, null);
 
 		if (rc != Sqlite.OK) { 
-            stderr.printf ("SQL error: %d, %s\n", rc, db.errmsg ());
-            return false;
-        }
+			stderr.printf ("SQL error: %d, %s\n", rc, db.errmsg ());
+			return false;
+		}
 
 		/* update lastedit */
 		if (_modified > config.lastedit_task) {
@@ -272,14 +290,14 @@ public class ToodledoTask : GLib.Object
 	}
 
 }	
-		
+
 
 public class Toodledo : GLib.Object
 {
 	private string userid;
 	private string password;
 	private string appid;	
-    private string apptoken;
+	private string apptoken;
 	public int lastedit_task;
 	public ToodledoConfig t_config;
 	public HashMap<int,ToodledoFolder> folders;
@@ -287,38 +305,38 @@ public class Toodledo : GLib.Object
 	private string get_session_token() {
 		size_t size = (userid + apptoken).length;
 		var md5 =GLib.Checksum.compute_for_string (GLib.ChecksumType.MD5, userid 
-		                                       + apptoken, size); 
+		                                           + apptoken, size); 
 
-var url = @"http://api.toodledo.com/2/account/token.php?userid=$(userid);appid=$(appid);
-vers=1;sig=$(md5)";
+		var url = @"http://api.toodledo.com/2/account/token.php?userid=$(userid);appid=$(appid);
+		vers=1;sig=$(md5)";
 
 		// create an HTTP session to twitter
-    var session = new Soup.SessionAsync ();
-    var message = new Soup.Message ("GET", url);
+		var session = new Soup.SessionAsync ();
+		var message = new Soup.Message ("GET", url);
 
-    // send the HTTP request
-    session.send_message (message);
-		
-		   var parser = new Json.Parser ();
-        parser.load_from_data ((string) message.response_body.flatten ().data, -1);
+		// send the HTTP request
+		session.send_message (message);
 
-        Json.Object root_object = parser.get_root().get_object();
+		var parser = new Json.Parser ();
+		parser.load_from_data ((string) message.response_body.flatten ().data, -1);
+
+		Json.Object root_object = parser.get_root().get_object();
 		var user_pw = "Agatha84";
 
 		var token2 = root_object.get_string_member("token");
 
 		return token2;
-}
+	}
 
 	private string get_key() {
 		var sessiontoken = get_session_token();
 		var temp = GLib.Checksum.compute_for_string(GLib.ChecksumType.MD5, password, password.length)
-		                        + apptoken + sessiontoken;
+			+ apptoken + sessiontoken;
 
 		var key = GLib.Checksum.compute_for_string(GLib.ChecksumType.MD5, temp, temp.length);
 		return key;
 	}
-		
+
 
 	private Json.Object get_json(string url) {
 		// try to connect with old key
@@ -326,7 +344,7 @@ vers=1;sig=$(md5)";
 
 		var message = new Soup.Message("GET", url + t_config.key);
 		session.send_message (message);
-		   var parser = new Json.Parser ();
+		var parser = new Json.Parser ();
 		parser.load_from_data ((string) message.response_body.flatten ().data, -1);
 		var root_object = parser.get_root ().get_object ();
 
@@ -336,7 +354,7 @@ vers=1;sig=$(md5)";
 			t_config.key = get_key();
 			message = new Soup.Message("GET", url + t_config.key);
 			session.send_message (message);
-		   	parser.load_from_data ((string) message.response_body.flatten ().data, -1);
+			parser.load_from_data ((string) message.response_body.flatten ().data, -1);
 			root_object = parser.get_root ().get_object ();
 		}
 
@@ -346,15 +364,15 @@ vers=1;sig=$(md5)";
 
 	public Gee.List<ToodledoTask> all_tasks_after(int after) {
 		var l = new Gee.ArrayList<ToodledoTask> ();
-		
+
 		// pegar tarefas
 		var session = new Soup.SessionAsync ();
 		var url = @"http://api.toodledo.com/2/tasks/get.php?modafter=$(after);fields=folder,context,goal,location,tag,startdate,duedate,duedatemod,starttime,duetime,remind,repeat,status,star,priority,length,timer,added,note,parent,children,order;key=";
 			var message = new Soup.Message("GET", url + t_config.key);
-			session.send_message (message);
-  			var parser = new Json.Parser ();
-		   	parser.load_from_data ("{\"tarefas\" : " + (string) message.response_body.flatten ().data + "}", -1);
-			var troot_object = parser.get_root ().get_object ();
+		session.send_message (message);
+		var parser = new Json.Parser ();
+		parser.load_from_data ("{\"tarefas\" : " + (string) message.response_body.flatten ().data + "}", -1);
+		var troot_object = parser.get_root ().get_object ();
 
 		var first = true;
 		foreach (var node in troot_object.get_array_member("tarefas").get_elements ()) {
@@ -363,26 +381,26 @@ vers=1;sig=$(md5)";
 				var geoname = node.get_object ();
 				var task = new ToodledoTask.from_json(geoname);
 				task.config = t_config;
-        		l.add(task);
+				l.add(task);
 			}
-        }
+		}
 		//stdout.printf("%s\n", (string) message.response_body.flatten ().data);
 		stdout.printf("after: %i\n", after);
 		return l;
 	}
 
-public Gee.List<ToodledoFolder> all_folders() {
+	public Gee.List<ToodledoFolder> all_folders() {
 		var l = new Gee.ArrayList<ToodledoFolder> ();
-		
+
 		// pegar tarefas
 		var session = new Soup.SessionAsync ();
 		var url = @"http://api.toodledo.com/2/folders/get.php?key=";
 			var message = new Soup.Message("GET", url + t_config.key);
-			session.send_message (message);
-  			var parser = new Json.Parser ();
-		   	parser.load_from_data ("{\"tarefas\" : " + (string) message.response_body.flatten ().data + "}", -1);
-			stdout.printf ("{\"tarefas\" : " + (string) message.response_body.flatten ().data + "}\n");
-			var troot_object = parser.get_root ().get_object ();
+		session.send_message (message);
+		var parser = new Json.Parser ();
+		parser.load_from_data ("{\"tarefas\" : " + (string) message.response_body.flatten ().data + "}", -1);
+		stdout.printf ("{\"tarefas\" : " + (string) message.response_body.flatten ().data + "}\n");
+		var troot_object = parser.get_root ().get_object ();
 
 		var first = false;
 		foreach (var node in troot_object.get_array_member("tarefas").get_elements ()) {
@@ -391,10 +409,10 @@ public Gee.List<ToodledoFolder> all_folders() {
 				var geoname = node.get_object ();
 				var folder = new ToodledoFolder.from_json(geoname);
 				//task.config = t_config;
-        		l.add(folder);
+				l.add(folder);
 				folders[folder.id] = folder;
 			}
-        }
+		}
 		//stdout.printf("%s\n", (string) message.response_body.flatten ().data);
 		//stdout.printf("after: %i\n", after);
 		folders[0] = new ToodledoFolder();
@@ -402,11 +420,11 @@ public Gee.List<ToodledoFolder> all_folders() {
 		ToodledoFolder.mapa = folders;
 		return l;
 	}
-		
-    public Gee.List<ToodledoTask> all_tasks() {
+
+	public Gee.List<ToodledoTask> all_tasks() {
 		return all_tasks_after(0);
 	}
-	
+
 	public Toodledo(ToodledoConfig c) {
 		userid = c.userid;
 		password = c.password;
@@ -417,9 +435,9 @@ public Gee.List<ToodledoFolder> all_folders() {
 		folders = new HashMap<int,ToodledoFolder>();
 
 		// connect to toodledo
-				var url = @"http://api.toodledo.com/2/account/get.php?key=";
-		var root = get_json(url);
-		
+		var url = @"http://api.toodledo.com/2/account/get.php?key=";
+			var root = get_json(url);
+
 		userid = root.get_string_member ("userid");
 		stdout.printf("Userid: %s\n", userid);
 
@@ -430,42 +448,42 @@ public Gee.List<ToodledoFolder> all_folders() {
 		stdout.printf("Lastedit task: %i\n", lastedit_task);
 	}
 
-public Gee.List<ToodledoTask> from_sqlite(string arg) {
+	public Gee.List<ToodledoTask> from_sqlite(string arg) {
 		var l = new ArrayList<ToodledoTask> ();
 
 		var database = "/home/paulo/.toodledo/toodledo.sqlite";
-	    var c = t_config;
-		
+		var c = t_config;
+
 		Database db;
 
 		if (!FileUtils.test (database, FileTest.IS_REGULAR)) {
-            stderr.printf ("Database %s does not exist or is directory\n", database);
-            return null;
-        }
+			stderr.printf ("Database %s does not exist or is directory\n", database);
+			return null;
+		}
 
-        var rc = Database.open (database, out db);
+		var rc = Database.open (database, out db);
 
 		if (rc != Sqlite.OK) {
-            stderr.printf ("Can't open database: %d, %s\n", rc, db.errmsg ());
-            return null;
-        }
+			stderr.printf ("Can't open database: %d, %s\n", rc, db.errmsg ());
+			return null;
+		}
 		rc = db.exec(@"SELECT * FROM tasks $(arg)", (n_collumns, values, collumn_names) => { 
 			var t = new ToodledoTask.from_array (values);
 			t.config = c;
 			l.add(t); return 0;}, null);
 
 		if (rc != Sqlite.OK) { 
-            stderr.printf ("SQL error: %d, %s\n", rc, db.errmsg ());
-            return null;
-        }
+			stderr.printf ("SQL error: %d, %s\n", rc, db.errmsg ());
+			return null;
+		}
 
-	
+
 
 		return l;
-		
+
 	}
 
-		
+
 }
 
 
@@ -480,9 +498,14 @@ public class Main : GLib.Object
 	//const string UI_FILE = Config.PACKAGE_DATA_DIR + "/" + "gtk_foobar.ui";
 	const string UI_FILE = "src/gtk_foobar.ui";
 
+	public static int default_length;
+	public static int minutes_left;
+	public static Indicator indicator;
+
 
 	public Main ()
 	{
+
 
 		try 
 		{
@@ -514,20 +537,93 @@ public class Main : GLib.Object
 		}
 	}
 
+	static void pomodoro_start(Purple purple) {
+		stdout.printf("Pomodoro start\n");
+		if(minutes_left <= default_length) {
+			return;
+		}
+		stdout.printf("Pomodoro start 2\n");
+		try {
+			stdout.printf("Pomodoro start 3\n");
+			minutes_left--;
+			var status = purple.purple_savedstatus_get_current();
+			purple.purple_savedstatus_set_message(status, @"Pomodoro: $minutes_left min restando");
+			purple.purple_savedstatus_set_type(status, 3);
+
+			indicator.set_status(IndicatorStatus.ATTENTION);
+			stdout.printf("Pomodoro start 4\n");
+			GLib.Timeout.add_seconds(5, () => {
+				stdout.printf(@"timeout $minutes_left\n");
+				minutes_left--;
+				var status2 = purple.purple_savedstatus_get_current();
+
+				if(minutes_left > 0) {
+					purple.purple_savedstatus_set_message(status2, @"Pomodoro: $minutes_left min restando");
+					purple.purple_savedstatus_set_type(status2, 3);
+					return true;
+				}
+				else {
+					finish_pomodoro(purple);
+					return false;
+				}
+			});
+		} catch (IOError e) {
+			stderr.printf ("%s\n", e.message);
+		}
+	}
+
+	static void finish_pomodoro(Purple purple) {
+		stdout.printf("finish_pomodoro ()\n");
+		minutes_left = default_length + 1;
+		indicator.set_status(IndicatorStatus.ACTIVE);
+		try {
+			var status = purple.purple_savedstatus_get_current();
+			purple.purple_savedstatus_set_message(status, @"");
+			purple.purple_savedstatus_set_type(status, 2);
+			stdout.printf("finish 2\n");
+		} catch (IOError e) {
+			stderr.printf ("%s\n", e.message);
+		}
+	}
+
+
+
 	static int main (string[] args) 
 	{
 		Gtk.init (ref args);
 		var app = new Main ();
 
+		default_length = 25;
+		minutes_left = default_length + 1;
+
+		Purple purple;
+		try {
+			purple = Bus.get_proxy_sync (BusType.SESSION,
+			                             "im.pidgin.purple.PurpleService",
+			                             "/im/pidgin/purple/PurpleObject");
+			var accounts = purple.purple_accounts_get_all_active ();
+			foreach (int account in accounts) {
+				string username = purple.purple_account_get_username (account);
+				stdout.printf ("Account %s\n", username);
+			}
+
+			purple.received_im_msg.connect ((account, sender, msg) => {
+				stdout.printf (@"Message received $sender: $msg\n");
+			});
+		}
+		catch (IOError e) {
+			return 1;
+		}
+
 		stdout.printf("Teste\n");
-	
+
 		var c = new ToodledoConfig();		
 		var t = new Toodledo(c);
 
 		var map = new HashMap<string, int> ();
 		t.all_folders (); /* to initialize id -> folder mapping */
 		foreach (var s in t.folders.keys) {
-    		stdout.printf (@"%i - $(t.folders[s].name)\n", s);
+			stdout.printf (@"%i - $(t.folders[s].name)\n", s);
 			map[t.folders[s].name] = 0; // inicializar
 		}
 
@@ -539,24 +635,24 @@ public class Main : GLib.Object
 		}
 		else if(args[1] == "--overwrite-from-server") { 
 			Database db;
-				if (!FileUtils.test (c.database_file, FileTest.IS_REGULAR)) {
-			           stderr.printf ("Database %s does not exist or is directory\n", c.database_file);
-	            return 1;
-		      }
+			if (!FileUtils.test (c.database_file, FileTest.IS_REGULAR)) {
+				stderr.printf ("Database %s does not exist or is directory\n", c.database_file);
+				return 1;
+			}
 
-		       var rc = Database.open (c.database_file, out db);
+			var rc = Database.open (c.database_file, out db);
 
 			if (rc != Sqlite.OK) {
-        		stderr.printf ("Can't open database: %d, %s\n", rc, db.errmsg ());
-        		return 1;
-    		}
+				stderr.printf ("Can't open database: %d, %s\n", rc, db.errmsg ());
+				return 1;
+			}
 
 			rc = db.exec(@"DELETE from tasks;", null, null);
 
 			if (rc != Sqlite.OK) { 
-       			stderr.printf ("SQL error: %d, %s\n", rc, db.errmsg ());
-        		return 1;
-    		}
+				stderr.printf ("SQL error: %d, %s\n", rc, db.errmsg ());
+				return 1;
+			}
 
 			var l = t.all_tasks();
 			foreach(var task in l) {
@@ -573,63 +669,71 @@ public class Main : GLib.Object
 			stdout.printf("%i\n", c.lastedit_task);
 		}	
 		else if(args[1] == "--indicator") {
-        
-                var win = new Window();
-                win.title = "Indicator Test";
-                win.resize(200, 200);
-                win.destroy.connect(Gtk.main_quit);
 
-                var label = new Label("Hello, world!");
-                win.add(label);
+			var win = new Window();
+			win.title = "Indicator Test";
+			win.resize(200, 200);
+			win.destroy.connect(Gtk.main_quit);
 
-                var indicator = new Indicator(win.title, "green-tomato",
-                                              IndicatorCategory.APPLICATION_STATUS);
-                indicator.set_status(IndicatorStatus.ACTIVE);
-				indicator.set_icon_theme_path("/home/paulo/toodledo/icons");
-                indicator.set_attention_icon("red-tomato");
-			
+			var label = new Label("Hello, world!");
+			win.add(label);
 
-                var menu = new Menu();
+			indicator = new Indicator(win.title, "green-tomato",
+			                          IndicatorCategory.APPLICATION_STATUS);
+			indicator.set_status(IndicatorStatus.ACTIVE);
+			indicator.set_icon_theme_path("/home/paulo/toodledo/icons");
+			indicator.set_attention_icon("red-tomato");
 
-				var l = t.from_sqlite ("");
 
-				stdout.printf("Teste\n");
+			var menu = new Menu();
 
-				var now = new DateTime.now_utc();
-				int total_time = 0;
+			var l = t.from_sqlite ("");
 
-			
-				foreach (var task in l) {
-					if((task.duedate > now.add_days(-1).to_unix()) && (task.duedate < now.to_unix())
-					   && (task.completed.to_unix() == 0)) {
-						   task.print();
-						   stdout.printf("%i %i\n", (int32)task.duedate, (int32)now.to_unix());
-						   
-						   var item = new MenuItem.with_label(task.title);
-            				item.activate.connect(() => {
-                    			indicator.set_status(IndicatorStatus.ATTENTION);
-            				});
-            				item.show();
-            				menu.append(item);
+			stdout.printf("Teste\n");
 
-					}
-				}
+			var now = new DateTime.now_utc();
+			int total_time = 0;
 
-				var item = new SeparatorMenuItem();
-				item.show();
-				menu.append(item);
 
-				var item2 = new MenuItem.with_label("Void pomodoro");
-				item2.show();
-				menu.append(item2);
-			
+			foreach (var task in l) {
+				if((task.duedate > now.add_days(-1).to_unix()) && (task.duedate < now.to_unix())
+				   && (task.completed.to_unix() == 0)) {
+					   task.print();
+					   stdout.printf("%i %i\n", (int32)task.duedate, (int32)now.to_unix());
 
-                indicator.set_menu(menu);
+					   var item = new MenuItem.with_label(task.title);
+					   item.activate.connect(() => {
+						   pomodoro_start(purple);
+					   });
+					   item.show();
+					   menu.append(item);
 
-                win.show_all();
+				   }
+			}
 
-                Gtk.main();
-                return 0;
+			var item = new SeparatorMenuItem();
+			item.show();
+			menu.append(item);
+
+			var item2 = new MenuItem.with_label("Void pomodoro");
+			item2.show();
+			menu.append(item2);
+			item2.activate.connect(() => {
+				minutes_left = 0;
+				var status = purple.purple_savedstatus_get_current();
+				purple.purple_savedstatus_set_message(status, @"");
+				purple.purple_savedstatus_set_type(status, 2);
+				indicator.set_status(IndicatorStatus.ACTIVE);
+			});
+
+
+			indicator.set_menu(menu);
+
+
+			win.show_all();
+
+			Gtk.main();
+			return 0;
 		}
 		else if(args[1] == "--folders") {
 			stdout.printf("FOLDERS\n");
@@ -647,18 +751,18 @@ public class Main : GLib.Object
 			var now = new DateTime.now_utc();
 			int total_time = 0;
 
-			
+
 			foreach (var task in l) {
 				if((task.completed.to_unix() > (now.add_days(-7)).to_unix())
 				   || (task.completed.to_unix() == 0)) {
 
-					task.print();
-					map[task.foldername()] = map[task.foldername()] + task.time_expended();
-					total_time += task.time_expended();
-				}
+					   task.print();
+					   map[task.foldername()] = map[task.foldername()] + task.time_expended();
+					   total_time += task.time_expended();
+				   }
 			}
 			foreach (var entry in map.entries) {
-    			stdout.printf ("%s => %d min\n", entry.key, entry.value);
+				stdout.printf ("%s => %d min\n", entry.key, entry.value);
 			}
 			stdout.printf("\n\nTotal time %s\n", pretty_time(total_time));
 
