@@ -591,19 +591,38 @@ public class Main : GLib.Object
 
                 var menu = new Menu();
 
-                var item = new MenuItem.with_label("Foo");
-                item.activate.connect(() => {
-                        indicator.set_status(IndicatorStatus.ATTENTION);
-                });
-                item.show();
-                menu.append(item);
+				var l = t.from_sqlite ("");
 
-                item = new MenuItem.with_label("Bar");
-                item.show();
-                item.activate.connect(() => {
-                        indicator.set_status(IndicatorStatus.ATTENTION);
-                });
-                menu.append(item);
+				stdout.printf("Teste\n");
+
+				var now = new DateTime.now_utc();
+				int total_time = 0;
+
+			
+				foreach (var task in l) {
+					if((task.duedate > now.add_days(-1).to_unix()) && (task.duedate < now.to_unix())
+					   && (task.completed.to_unix() == 0)) {
+						   task.print();
+						   stdout.printf("%i %i\n", (int32)task.duedate, (int32)now.to_unix());
+						   
+						   var item = new MenuItem.with_label(task.title);
+            				item.activate.connect(() => {
+                    			indicator.set_status(IndicatorStatus.ATTENTION);
+            				});
+            				item.show();
+            				menu.append(item);
+
+					}
+				}
+
+				var item = new SeparatorMenuItem();
+				item.show();
+				menu.append(item);
+
+				var item2 = new MenuItem.with_label("Void pomodoro");
+				item2.show();
+				menu.append(item2);
+			
 
                 indicator.set_menu(menu);
 
