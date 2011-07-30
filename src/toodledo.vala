@@ -289,6 +289,48 @@ public class ToodledoTask : GLib.Object
 
 	}
 
+	public void add_one_minute() {
+		stdout.printf("One minute\n");
+
+		var build = new Json.Builder();
+
+		build.begin_array();
+		build.begin_object();
+		build.set_member_name("id");
+		build.add_int_value(_id);
+		build.set_member_name("timer");
+		build.add_int_value(_timer + 60);
+		build.end_object ();
+		build.end_array();
+
+		
+
+		var gen = new Json.Generator();
+		gen.set_root (build.get_root());
+
+		size_t length;
+		string data = gen.to_data(out length);
+
+		stdout.printf("%s\n", data);
+
+		var key = config.key;
+		var url = @"http://api.toodledo.com/2/tasks/edit.php?key=$key;tasks=$data;fields=timer";
+
+			stdout.printf("%s\n", url);
+		// create an HTTP session to twitter
+		var session = new Soup.SessionAsync ();
+		var message = new Soup.Message ("GET", url);
+
+		// send the HTTP request
+		session.send_message (message);
+
+		stdout.printf("%s\n", (string) message.response_body.flatten ().data);
+
+
+		//config.send_json("http://api.toodledo.com/2/tasks/edit.php?", jset);
+		
+	}
+
 }	
 
 
@@ -537,7 +579,7 @@ public class Main : GLib.Object
 		}
 	}
 
-	static void pomodoro_start(Purple purple) {
+	static void pomodoro_start(Purple purple, ToodledoTask task) {
 		stdout.printf("Pomodoro start\n");
 		if(minutes_left <= default_length) {
 			return;
@@ -549,6 +591,7 @@ public class Main : GLib.Object
 			var status = purple.purple_savedstatus_get_current();
 			purple.purple_savedstatus_set_message(status, @"Pomodoro: $minutes_left min restando");
 			purple.purple_savedstatus_set_type(status, 3);
+				purple.purple_savedstatus_activate(status);
 
 			indicator.set_status(IndicatorStatus.ATTENTION);
 			stdout.printf("Pomodoro start 4\n");
@@ -560,10 +603,11 @@ public class Main : GLib.Object
 				if(minutes_left > 0) {
 					purple.purple_savedstatus_set_message(status2, @"Pomodoro: $minutes_left min restando");
 					purple.purple_savedstatus_set_type(status2, 3);
+					purple.purple_savedstatus_activate(status2);
 					return true;
 				}
 				else {
-					finish_pomodoro(purple);
+					finish_pomodoro(purple, task);
 					return false;
 				}
 			});
@@ -572,14 +616,16 @@ public class Main : GLib.Object
 		}
 	}
 
-	static void finish_pomodoro(Purple purple) {
+	static void finish_pomodoro(Purple purple, ToodledoTask task) {
 		stdout.printf("finish_pomodoro ()\n");
 		minutes_left = default_length + 1;
 		indicator.set_status(IndicatorStatus.ACTIVE);
+		task.add_one_minute();
 		try {
 			var status = purple.purple_savedstatus_get_current();
 			purple.purple_savedstatus_set_message(status, @"");
 			purple.purple_savedstatus_set_type(status, 2);
+			purple.purple_savedstatus_activate(status);
 			stdout.printf("finish 2\n");
 		} catch (IOError e) {
 			stderr.printf ("%s\n", e.message);
@@ -703,7 +749,7 @@ public class Main : GLib.Object
 
 					   var item = new MenuItem.with_label(task.title);
 					   item.activate.connect(() => {
-						   pomodoro_start(purple);
+						   pomodoro_start(purple, task);
 					   });
 					   item.show();
 					   menu.append(item);
@@ -723,6 +769,7 @@ public class Main : GLib.Object
 				var status = purple.purple_savedstatus_get_current();
 				purple.purple_savedstatus_set_message(status, @"");
 				purple.purple_savedstatus_set_type(status, 2);
+				purple.purple_savedstatus_activate(status);
 				indicator.set_status(IndicatorStatus.ACTIVE);
 			});
 
@@ -730,7 +777,7 @@ public class Main : GLib.Object
 			indicator.set_menu(menu);
 
 
-			win.show_all();
+			//win.show_all();
 
 			Gtk.main();
 			return 0;
