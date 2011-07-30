@@ -289,9 +289,13 @@ public class ToodledoTask : GLib.Object
 
 	}
 
-	public void add_one_minute() {
-		stdout.printf("One minute\n");
+	public void save_both() {
+		save_to_sqlite();
+		save_to_toodledo ();
+	}
+		
 
+	public void save_to_toodledo() {
 		var build = new Json.Builder();
 
 		build.begin_array();
@@ -299,7 +303,7 @@ public class ToodledoTask : GLib.Object
 		build.set_member_name("id");
 		build.add_int_value(_id);
 		build.set_member_name("timer");
-		build.add_int_value(_timer + 60);
+		build.add_int_value(_timer);
 		build.end_object ();
 		build.end_array();
 
@@ -541,7 +545,8 @@ public class Main : GLib.Object
 	const string UI_FILE = "src/gtk_foobar.ui";
 
 	public static int default_length;
-	public static int minutes_left;
+	public static int minutes_left; 
+	// when a pomodoro is finished, contains minus (-) the minutes left: 0 in case the time ran out
 	public static Indicator indicator;
 
 
@@ -595,7 +600,7 @@ public class Main : GLib.Object
 
 			indicator.set_status(IndicatorStatus.ATTENTION);
 			stdout.printf("Pomodoro start 4\n");
-			GLib.Timeout.add_seconds(5, () => {
+			GLib.Timeout.add_seconds(60, () => {
 				stdout.printf(@"timeout $minutes_left\n");
 				minutes_left--;
 				var status2 = purple.purple_savedstatus_get_current();
@@ -618,9 +623,10 @@ public class Main : GLib.Object
 
 	static void finish_pomodoro(Purple purple, ToodledoTask task) {
 		stdout.printf("finish_pomodoro ()\n");
+		task.timer = task.timer + (default_length + minutes_left + 1)*60; // yes, its + minutes_left
 		minutes_left = default_length + 1;
 		indicator.set_status(IndicatorStatus.ACTIVE);
-		task.add_one_minute();
+		task.save_both ();
 		try {
 			var status = purple.purple_savedstatus_get_current();
 			purple.purple_savedstatus_set_message(status, @"");
@@ -706,23 +712,19 @@ public class Main : GLib.Object
 				task.save_to_sqlite();
 			}
 		}		
-		else if(args[1] == "--sync") { 
-			var l = t.all_tasks_after(c.lastedit_task);
-			foreach(var task in l) {
+		else if(args[1] == "--indicator") {
+			var n = t.all_tasks_after(c.lastedit_task);
+			foreach(var task in n) {
 				task.print();
 				task.save_to_sqlite();
 			}
 			stdout.printf("%i\n", c.lastedit_task);
-		}	
-		else if(args[1] == "--indicator") {
+
 
 			var win = new Window();
 			win.title = "Indicator Test";
 			win.resize(200, 200);
 			win.destroy.connect(Gtk.main_quit);
-
-			var label = new Label("Hello, world!");
-			win.add(label);
 
 			indicator = new Indicator(win.title, "green-tomato",
 			                          IndicatorCategory.APPLICATION_STATUS);
@@ -761,11 +763,12 @@ public class Main : GLib.Object
 			item.show();
 			menu.append(item);
 
-			var item2 = new MenuItem.with_label("Void pomodoro");
+			var item2 = new ImageMenuItem.from_stock (Gtk.STOCK_MEDIA_STOP, null);
+			item2.set_label("Void Pomodoro");
 			item2.show();
 			menu.append(item2);
 			item2.activate.connect(() => {
-				minutes_left = 0;
+				minutes_left = -minutes_left;
 				var status = purple.purple_savedstatus_get_current();
 				purple.purple_savedstatus_set_message(status, @"");
 				purple.purple_savedstatus_set_type(status, 2);
