@@ -23,7 +23,7 @@ AM_CFLAGS =\
 	 -g
 
 VALAFLAGS =  \
-	--pkg gee-1.0 --pkg sqlite3 --pkg json-glib-1.0 --pkg appindicator3-0.1 --pkg libsoup-2.4 --thread --pkg gtk+-3.0 --vapidir . --pkg config
+	--pkg gee-1.0 --pkg sqlite3 --pkg json-glib-1.0 --pkg appindicator3-0.1 --pkg libsoup-2.4 --pkg posix --thread --pkg gtk+-3.0 --vapidir . --pkg config
 
 bin_PROGRAMS = toodledo
 

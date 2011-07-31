@@ -545,8 +545,9 @@ public class Main : GLib.Object
 	const string UI_FILE = "src/gtk_foobar.ui";
 
 	public static int default_length;
-	public static int minutes_left; 
+	public static int minutes_left;
 	// when a pomodoro is finished, contains minus (-) the minutes left: 0 in case the time ran out
+	public static int total_pomodoros;
 	public static Indicator indicator;
 
 
@@ -596,7 +597,7 @@ public class Main : GLib.Object
 			var status = purple.purple_savedstatus_get_current();
 			purple.purple_savedstatus_set_message(status, @"Pomodoro: $minutes_left min restando");
 			purple.purple_savedstatus_set_type(status, 3);
-				purple.purple_savedstatus_activate(status);
+			purple.purple_savedstatus_activate(status);
 
 			indicator.set_status(IndicatorStatus.ATTENTION);
 			stdout.printf("Pomodoro start 4\n");
@@ -623,6 +624,23 @@ public class Main : GLib.Object
 
 	static void finish_pomodoro(Purple purple, ToodledoTask task) {
 		stdout.printf("finish_pomodoro ()\n");
+		if(minutes_left == 0) {
+			total_pomodoros++;
+			if((total_pomodoros % 8) == 0) {
+				notify_osd(@"Pomodoro finished", 
+				           @"Congratulations!!! You finished your 8th pomodoro. You may nopw take a long break, like lunch.", 0);
+			}
+			else if((total_pomodoros % 4) == 0) {
+				notify_osd(@"Pomodoro finished", 
+				           @"Congratulations! You finished your 4th pomodoro. You should now take a longer brak, ~15min", 0);
+			}
+			else {
+				notify_osd(@"Pomodoro finished", 
+				           @"You should now take a short break", 0);
+			}
+		}
+	
+			
 		task.timer = task.timer + (default_length + minutes_left + 1)*60; // yes, its + minutes_left
 		minutes_left = default_length + 1;
 		indicator.set_status(IndicatorStatus.ACTIVE);
@@ -639,14 +657,31 @@ public class Main : GLib.Object
 	}
 
 
+	static void notify_osd(string title, string text, int icon) {
+		var icon_text = "/home/paulo/toodledo/icons/green-tomato.svg";
+		string tip = "Tell your friends all about Pomodoro. They will tend to interrupt you less during your pomodori, and might even become converts!";
+		if(icon == 1) {
+			icon_text = "/home/paulo/toodledo/icons/pomodoro.jpeg";
+		}
+		if(icon == 2) {
+			icon_text = "/home/paulo/toodledo/icons/angry_tomato.jpeg";
+			text = "Damn those interruptions. How will you achieve Master Tomatoman if people keep interrupting you?";
+		}
+		
+		Posix.system(@"notify-send '$title' '$text TIP: $tip' -i $icon_text");
+	}
+		
+
 
 	static int main (string[] args) 
 	{
 		Gtk.init (ref args);
+		
 		var app = new Main ();
 
 		default_length = 25;
 		minutes_left = default_length + 1;
+		total_pomodoros = 0;
 
 		Purple purple;
 		try {
@@ -713,6 +748,8 @@ public class Main : GLib.Object
 			}
 		}		
 		else if(args[1] == "--indicator") {
+		notify_osd(@"Welcome to pomodoro!", 
+				           @"", 1);
 			var n = t.all_tasks_after(c.lastedit_task);
 			foreach(var task in n) {
 				task.print();
@@ -769,6 +806,8 @@ public class Main : GLib.Object
 			menu.append(item2);
 			item2.activate.connect(() => {
 				minutes_left = -minutes_left;
+				notify_osd(@"Interrupted!", 
+				           "", 2);
 				var status = purple.purple_savedstatus_get_current();
 				purple.purple_savedstatus_set_message(status, @"");
 				purple.purple_savedstatus_set_type(status, 2);
