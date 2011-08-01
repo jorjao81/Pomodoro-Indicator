@@ -1,0 +1,11 @@
+
+Ubuntu 11.04
+
+sudo apt-add-repository ppa:gnome3-team/gnome3 
+sudo apt-get-update
+sudo apt-get install gtk-3.0-dev appindicator4-dev valac-0.12 libnotify-bin ...
+
+cd toodledo
+./autogen.sh
+make
+./src/toodledo --indicator

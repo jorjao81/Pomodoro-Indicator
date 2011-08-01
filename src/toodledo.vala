@@ -61,6 +61,7 @@ public class ToodledoConfig : GLib.Object
 		var file = File.new_for_path(Environment.get_home_dir() + @"/.toodledo/config");
 
 		try {
+			stdout.printf("get from file\n");
 			// Open file for reading and wrap returned FileInputStream into a
 			// DataInputStream, so we can read line by line
 			int i = 0;
@@ -76,6 +77,7 @@ public class ToodledoConfig : GLib.Object
 				}
 				else if(i == 2) {
 					key = line;
+					stdout.printf("key %s\n", key);
 				}
 				else if(i == 3) {
 					_lastedit_task = line;
@@ -355,6 +357,7 @@ public class Toodledo : GLib.Object
 
 		var url = @"http://api.toodledo.com/2/account/token.php?userid=$(userid);appid=$(appid);
 		vers=1;sig=$(md5)";
+		stdout.printf("get_session_token()\nurl:%s\n", url);
 
 		// create an HTTP session to twitter
 		var session = new Soup.SessionAsync ();
@@ -365,6 +368,7 @@ public class Toodledo : GLib.Object
 
 		var parser = new Json.Parser ();
 		parser.load_from_data ((string) message.response_body.flatten ().data, -1);
+		stdout.printf("%s\n", (string) message.response_body.flatten ().data);
 
 		Json.Object root_object = parser.get_root().get_object();
 		var user_pw = "Agatha84";
@@ -375,6 +379,7 @@ public class Toodledo : GLib.Object
 	}
 
 	private string get_key() {
+		stdout.printf("get key\n");
 		var sessiontoken = get_session_token();
 		var temp = GLib.Checksum.compute_for_string(GLib.ChecksumType.MD5, password, password.length)
 			+ apptoken + sessiontoken;
@@ -397,7 +402,9 @@ public class Toodledo : GLib.Object
 		int error;
 		if ((error = (int)root_object.get_int_member ("errorCode")) == 2) {
 			stdout.printf("Error %i\n", error);
+			stdout.printf("Old key: %s\n", t_config.key);
 			t_config.key = get_key();
+			stdout.printf("New key: %s\n", t_config.key);
 			message = new Soup.Message("GET", url + t_config.key);
 			session.send_message (message);
 			parser.load_from_data ((string) message.response_body.flatten ().data, -1);
@@ -781,6 +788,7 @@ public class Main : GLib.Object
 
 
 			foreach (var task in l) {
+					   stdout.printf("%i %i\n", (int32)task.duedate, (int32)now.to_unix());
 				if((task.duedate > now.add_days(-1).to_unix()) && (task.duedate < now.to_unix())
 				   && (task.completed.to_unix() == 0)) {
 					   task.print();
