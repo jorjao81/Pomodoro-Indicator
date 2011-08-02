@@ -642,7 +642,7 @@ public class Main : GLib.Object
 				           @"Congratulations! You finished your 4th pomodoro. You should now take a longer brak, ~15min", 0);
 			}
 			else {
-				notify_osd(@"Pomodoro finished", 
+				notify_osd(@"Pomodoro $total_pomodoros finished", 
 				           @"You should now take a short break", 0);
 			}
 		}
