@@ -645,6 +645,7 @@ public class Main : GLib.Object
 				notify_osd(@"Pomodoro $total_pomodoros finished", 
 				           @"You should now take a short break", 0);
 			}
+			Posix.system(@"mpg321 /home/paulo/toodledo/icons/Apple_3g_Ring.mp3");
 		}
 	
 			
