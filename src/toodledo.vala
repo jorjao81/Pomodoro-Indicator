@@ -481,8 +481,8 @@ public class Toodledo : GLib.Object
 	public Toodledo(ToodledoConfig c) {
 		userid = c.userid;
 		password = c.password;
-		appid = "jorjao81";
-		apptoken = "api4dcb3e8d19a43";
+		appid = "jorjao81teste";
+		apptoken = "api4e369a29d9473";
 		t_config = c;
 
 		folders = new HashMap<int,ToodledoFolder>();
@@ -821,6 +821,14 @@ public class Main : GLib.Object
 				purple.purple_savedstatus_set_type(status, 2);
 				purple.purple_savedstatus_activate(status);
 				indicator.set_status(IndicatorStatus.ACTIVE);
+			});
+
+			var item3 = new ImageMenuItem.from_stock (Gtk.STOCK_MEDIA_STOP, null);
+			item3.set_label("Quit");
+			item3.show();
+			menu.append(item3);
+			item3.activate.connect(() => {
+				Gtk.main_quit();
 			});
 
 
