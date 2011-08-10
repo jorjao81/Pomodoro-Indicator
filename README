@@ -3,7 +3,7 @@ Ubuntu 11.04
 
 sudo apt-add-repository ppa:gnome3-team/gnome3 
 sudo apt-get-update
-sudo apt-get install gtk-3.0-dev libappindicator3-dev valac-0.12 libnotify-bin ...
+sudo apt-get install build-essential gnome-common gtk-3.0-dev libappindicator3-dev valac-0.12 libgee-dev libsqlite3-dev libjson-glib-1.0 sqlite3 libnotify-bin 
 
 cd toodledo
 ./autogen.sh
