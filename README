@@ -1,11 +1,87 @@
+POMODORO INDICATOR
+
+This program is a simple indicator applet, integrated tightly with
+Toodledo and Pidgin, to help you track your activities with
+the Pomodoro technique. 
+
+It's alpha quality at best, so use at your one risk.
+You've been warned!
+
 
 Ubuntu 11.04
 
-sudo apt-add-repository ppa:gnome3-team/gnome3 
-sudo apt-get-update
-sudo apt-get install build-essential gnome-common gtk-3.0-dev libappindicator3-dev valac-0.12 libgee-dev libsqlite3-dev libjson-glib-1.0 sqlite3 libnotify-bin 
+Depends on:
+	* build-essential 
+	* gnome-common 
+	* gtk-3.0-dev 
+	* libappindicator3-dev
+	* valac-0.12 
+	* libgee-dev 
+	* libsqlite3-dev 
+	* libjson-glib-1.0 
+	* sqlite3 
+	* libnotify-bin
+	* And maybe others...
 
-cd toodledo
+INSTALATION 
+
+in your home directory, clone the git repository to a folder named
+"toodledo", so that the program can find the necessary files. Failure
+to do that will result in failure.
+
+cd ~
+git clone git@github.com:jorjao81/Pomodoro-Indicator.git toodledo
+
+
+COMPILATION
+
+cd ~/toodledo
 ./autogen.sh
 make
+
+
+SETUP
+
+First, create the local database
+
+mkdir ~/.toodledo
+cd ~/.toodledo
+sqlite3 toodledo.sqlite < ~/toodledo/sql/create.sql
+
+Then, create your configuration file in ~/.toodledo/config
+
+===========================================================
+USERID
+PASSWORD
+blabla
+0
+===========================================================
+
+where USERID is your toodledo user ID (NOT your email, check
+toodledo docs to find out how to get it), and PASSWORD is your
+password in plaintext. "blabla" and "0" should be entered as
+shown.
+
+RUNNING
+
+In the toodledo web interface, select the tasks you want to 
+do today and set the due date accordingly.
+
+Be sure that you have Pidgin open, else this will not work 
+(Hey, I was lazy to put some IFs...).
+
+cd ~/toodledo
 ./src/toodledo --indicator
+
+Hopefully, a green tomato will apear in your indicator area.
+If you click it, all of todays task will be shown. Click
+on a task to start a pomodoro. Pidgin will count down from
+25. You can void a task anytime you want. Time during your pomodoro
+will be logged in Toodledo.
+
+When your pomodoro is over, a sound will play and a message will
+appear. Tada! Awsome :P
+
+Enjoy! 
+
+Patches, suggestions, bugs, etc to paulo@jorjao81.com
