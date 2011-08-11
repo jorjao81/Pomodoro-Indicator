@@ -143,7 +143,7 @@ public class ToodledoTask : GLib.Object
 	public int64 timer {get; set; default = 0; }	
 	public string note {get; set; default = ""; }
 
-	public ToodledoConfig config {get; set; }
+	public weak ToodledoConfig config {get; set; }
 
 	public ToodledoTask() {
 	}
@@ -827,7 +827,10 @@ public class Main : GLib.Object
 			item3.show();
 			menu.append(item3);
 			item3.activate.connect(() => {
-				Gtk.main_quit();
+				if(minutes_left == default_length + 1) {
+					// no pomodoro running, safe to quit 
+					Gtk.main_quit();
+				}
 			});
 
 
@@ -837,7 +840,6 @@ public class Main : GLib.Object
 			//win.show_all();
 
 			Gtk.main();
-			return 0;
 		}
 		else if(args[1] == "--folders") {
 			stdout.printf("FOLDERS\n");
@@ -871,6 +873,9 @@ public class Main : GLib.Object
 			stdout.printf("\n\nTotal time %s\n", pretty_time(total_time));
 
 		}
+		t = null;
+		c = null;
+		stdout.printf("FIM!\n");
 		return 0;
 	}
 }
