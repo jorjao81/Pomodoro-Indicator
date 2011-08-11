@@ -266,7 +266,9 @@ public class ToodledoTask : GLib.Object
 		}
 	}
 
-
+	private string escape(string s) {
+		return s.replace("'", "''");
+	}
 
 	public bool save_to_sqlite() {
 		Database db;
@@ -282,7 +284,11 @@ public class ToodledoTask : GLib.Object
 			stderr.printf ("Can't open database: %d, %s\n", rc, db.errmsg ());
 			return false;
 		}
-		rc = db.exec(@"DELETE FROM TASKS WHERE id = $id; INSERT INTO tasks VALUES ($(_id), \"$(_title)\", \"$(_tag)\", $(_folder), $(_context), $(_goal), $(_location), $(_children), $(_duedate), $(_duedatemod), $(_duetime), $(_starttime), $(_remind), \"$(_repeat)\", $(_repeatfrom), $(_status), $(_length), $(_priority), $(_star), $(_modified), $(_completed), $(_added), $(_timer), \"$(_note)\")", null, null);
+		
+		var etitle = escape(_title);
+		var etag = escape(_tag);
+		var enote = escape(_note);
+		rc = db.exec(@"DELETE FROM TASKS WHERE id = $id; INSERT INTO tasks VALUES ($(_id), \'$(etitle)\', \'$(etag)\', $(_folder), $(_context), $(_goal), $(_location), $(_children), $(_duedate), $(_duedatemod), $(_duetime), $(_starttime), $(_remind), \'$(_repeat)\', $(_repeatfrom), $(_status), $(_length), $(_priority), $(_star), $(_modified), $(_completed), $(_added), $(_timer), \'$(enote)\')", null, null);
 
 		if (rc != Sqlite.OK) { 
 			stderr.printf ("SQL error: %d, %s\n", rc, db.errmsg ());
@@ -734,8 +740,6 @@ public class Main : GLib.Object
 			return 1;
 		}
 
-		stdout.printf("Teste\n");
-
 		var c = new ToodledoConfig();		
 		var t = new Toodledo(c);
 
@@ -787,7 +791,7 @@ public class Main : GLib.Object
 				task.print();
 				task.save_to_sqlite();
 			}
-			stdout.printf("%i\n", c.lastedit_task);
+			//stdout.printf("%i\n", c.lastedit_task);
 
 
 			var win = new Window();
@@ -806,18 +810,18 @@ public class Main : GLib.Object
 
 			var l = t.from_sqlite ("");
 
-			stdout.printf("Teste\n");
+			//stdout.printf("Teste\n");
 
 			var now = new DateTime.now_utc();
 			int total_time = 0;
 
 
 			foreach (var task in l) {
-					   stdout.printf("%i %i\n", (int32)task.duedate, (int32)now.to_unix());
+				//		   stdout.printf("%i %i\n", (int32)task.duedate, (int32)now.to_unix());
 				if((task.duedate > now.add_days(-1).to_unix()) && (task.duedate < now.to_unix())
 				   && (task.completed.to_unix() == 0)) {
 					   task.print();
-					   stdout.printf("%i %i\n", (int32)task.duedate, (int32)now.to_unix());
+					   //stdout.printf("%i %i\n", (int32)task.duedate, (int32)now.to_unix());
 
 					   var item = new MenuItem.with_label(task.title);
 					   item.activate.connect(() => {
