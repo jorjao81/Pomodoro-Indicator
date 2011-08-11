@@ -30,7 +30,7 @@ in your home directory, clone the git repository to a folder named
 to do that will result in failure.
 
 cd ~
-git clone git@github.com:jorjao81/Pomodoro-Indicator.git toodledo
+git clone git://github.com/jorjao81/Pomodoro-Indicator.git
 
 
 COMPILATION
