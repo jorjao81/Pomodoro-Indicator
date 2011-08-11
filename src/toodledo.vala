@@ -643,7 +643,7 @@ public class Main : GLib.Object
 				notify_osd(@"Pomodoro $total_pomodoros finished", 
 				           @"You should now take a short break", 0);
 			}
-			Posix.system(@"mpg321 /home/paulo/toodledo/icons/Apple_3g_Ring.mp3");
+			Posix.system("mpg321 " + ToodledoConfig.base_dir + "icons/Apple_3g_Ring.mp3");
 		}
 	
 			
@@ -664,13 +664,13 @@ public class Main : GLib.Object
 
 
 	static void notify_osd(string title, string text, int icon) {
-		var icon_text = "/home/paulo/toodledo/icons/green-tomato.svg";
+		var icon_text = ToodledoConfig.base_dir + "/icons/green-tomato.svg";
 		string tip = "Tell your friends all about Pomodoro. They will tend to interrupt you less during your pomodori, and might even become converts!";
 		if(icon == 1) {
-			icon_text = "/home/paulo/toodledo/icons/pomodoro.jpeg";
+			icon_text = ToodledoConfig.base_dir + "/icons/pomodoro.jpeg";
 		}
 		if(icon == 2) {
-			icon_text = "/home/paulo/toodledo/icons/angry_tomato.jpeg";
+			icon_text = ToodledoConfig.base_dir + "/icons/angry_tomato.jpeg";
 			text = "Damn those interruptions. How will you achieve Master Tomatoman if people keep interrupting you?";
 		}
 		
