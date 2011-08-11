@@ -26,6 +26,7 @@ using Sqlite;
 using Gee;
 using AppIndicator;
 
+
 [DBus (name = "im.pidgin.purple.PurpleInterface")]
 interface Purple : GLib.Object {
 	public signal void received_im_msg (int account, string sender, string msg,
@@ -52,6 +53,7 @@ public class ToodledoConfig : GLib.Object
 	public string key {get; set; }
 	public int lastedit_task {get { if(_lastedit_task == "") { return 0; } else { return _lastedit_task.to_int(); }} set { _lastedit_task = @"$value"; } }
 	public string database_file {get; set; default = Environment.get_home_dir() +"/.toodledo/toodledo.sqlite"; }
+	public static string base_dir {get; set; default = Environment.get_home_dir() + "/toodledo"; }
 
 	public ToodledoConfig() {
 		get_from_file();
@@ -140,8 +142,6 @@ public class ToodledoTask : GLib.Object
 	public int64 added {get; set; default = 0; }	
 	public int64 timer {get; set; default = 0; }	
 	public string note {get; set; default = ""; }
-
-	private static string database {get; set; default = "/home/paulo/.toodledo/toodledo.sqlite"; } 
 
 	public ToodledoConfig config {get; set; }
 
@@ -264,12 +264,12 @@ public class ToodledoTask : GLib.Object
 	public bool save_to_sqlite() {
 		Database db;
 
-		if (!FileUtils.test (database, FileTest.IS_REGULAR)) {
-			stderr.printf ("Database %s does not exist or is directory\n", database);
+		if (!FileUtils.test (config.database_file, FileTest.IS_REGULAR)) {
+			stderr.printf ("Database %s does not exist or is directory\n", config.database_file);
 			return false;
 		}
 
-		var rc = Database.open (database, out db);
+		var rc = Database.open (config.database_file, out db);
 
 		if (rc != Sqlite.OK) {
 			stderr.printf ("Can't open database: %d, %s\n", rc, db.errmsg ());
@@ -371,7 +371,6 @@ public class Toodledo : GLib.Object
 		stdout.printf("%s\n", (string) message.response_body.flatten ().data);
 
 		Json.Object root_object = parser.get_root().get_object();
-		var user_pw = "Agatha84";
 
 		var token2 = root_object.get_string_member("token");
 
@@ -504,17 +503,16 @@ public class Toodledo : GLib.Object
 	public Gee.List<ToodledoTask> from_sqlite(string arg) {
 		var l = new ArrayList<ToodledoTask> ();
 
-		var database = "/home/paulo/.toodledo/toodledo.sqlite";
 		var c = t_config;
 
 		Database db;
 
-		if (!FileUtils.test (database, FileTest.IS_REGULAR)) {
-			stderr.printf ("Database %s does not exist or is directory\n", database);
+		if (!FileUtils.test (t_config.database_file, FileTest.IS_REGULAR)) {
+			stderr.printf ("Database %s does not exist or is directory\n", t_config.database_file);
 			return null;
 		}
 
-		var rc = Database.open (database, out db);
+		var rc = Database.open (t_config.database_file, out db);
 
 		if (rc != Sqlite.OK) {
 			stderr.printf ("Can't open database: %d, %s\n", rc, db.errmsg ());
@@ -774,7 +772,7 @@ public class Main : GLib.Object
 			indicator = new Indicator(win.title, "green-tomato",
 			                          IndicatorCategory.APPLICATION_STATUS);
 			indicator.set_status(IndicatorStatus.ACTIVE);
-			indicator.set_icon_theme_path("/home/paulo/toodledo/icons");
+			indicator.set_icon_theme_path(ToodledoConfig.base_dir + "/icons");
 			indicator.set_attention_icon("red-tomato");
 
 
