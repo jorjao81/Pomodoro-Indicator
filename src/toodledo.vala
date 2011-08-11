@@ -144,6 +144,7 @@ public class ToodledoTask : GLib.Object
 	public string note {get; set; default = ""; }
 
 	public weak ToodledoConfig config {get; set; }
+	public weak Toodledo toodledo { get; set; }
 
 	public ToodledoTask() {
 	}
@@ -165,7 +166,7 @@ public class ToodledoTask : GLib.Object
 		}
 	}
 
-	public ToodledoTask.from_array(string[] arr) {
+	public ToodledoTask.from_array(string[] arr, Toodledo t, ToodledoConfig c) {
 		_id = arr[0].to_int();
 		_title = arr[1];
 		_tag = arr[2];
@@ -190,6 +191,9 @@ public class ToodledoTask : GLib.Object
 		_added = arr[21].to_int();
 		_timer = arr[22].to_int();
 		_note = arr[23];
+
+		toodledo = t;
+		config = c;
 	}
 
 	public string foldername() {
@@ -212,7 +216,7 @@ public class ToodledoTask : GLib.Object
 	}
 
 
-	public ToodledoTask.from_json(Json.Object task) {
+	public ToodledoTask.from_json(Json.Object task, Toodledo t, ToodledoConfig c) {
 
 		_title = task.get_string_member("title");
 		_tag = task.get_string_member("tag");
@@ -239,6 +243,9 @@ public class ToodledoTask : GLib.Object
 		_completed = json_get_integer (task, "completed");
 		_added = json_get_integer (task, "added");
 		_timer = json_get_integer (task, "timer");
+
+		toodledo = t;
+		config = c;
 	}
 
 	public static int json_get_integer(Json.Object o, string member) {
@@ -330,6 +337,25 @@ public class ToodledoTask : GLib.Object
 		// send the HTTP request
 		session.send_message (message);
 
+		var parser = new Json.Parser ();
+		parser.load_from_data ((string) message.response_body.flatten ().data, -1);
+		Json.Object root_object = parser.get_root().get_object();
+		
+		int error = 0;
+		if ((error = (int)root_object.get_int_member ("errorCode")) == 2) {
+		// TODO: Refactor this mess, keep it DRY
+			stdout.printf("Error %i\n", error);
+			stdout.printf("Old key: %s\n", config.key);
+			config.key = toodledo.get_key();
+			stdout.printf("New key: %s\n", config.key);
+			url = @"http://api.toodledo.com/2/tasks/edit.php?key=$key;tasks=$data;fields=timer";
+			message = new Soup.Message("GET", url);
+			session.send_message (message);
+			parser.load_from_data ((string) message.response_body.flatten ().data, -1);
+			root_object = parser.get_root ().get_object ();
+		}
+
+
 		stdout.printf("%s\n", (string) message.response_body.flatten ().data);
 
 
@@ -377,7 +403,7 @@ public class Toodledo : GLib.Object
 		return token2;
 	}
 
-	private string get_key() {
+	public string get_key() {
 		stdout.printf("get key\n");
 		var sessiontoken = get_session_token();
 		var temp = GLib.Checksum.compute_for_string(GLib.ChecksumType.MD5, password, password.length)
@@ -431,7 +457,7 @@ public class Toodledo : GLib.Object
 			if(first) { first = false; }
 			else {
 				var geoname = node.get_object ();
-				var task = new ToodledoTask.from_json(geoname);
+				var task = new ToodledoTask.from_json(geoname, this, t_config);
 				task.config = t_config;
 				l.add(task);
 			}
@@ -519,7 +545,7 @@ public class Toodledo : GLib.Object
 			return null;
 		}
 		rc = db.exec(@"SELECT * FROM tasks $(arg)", (n_collumns, values, collumn_names) => { 
-			var t = new ToodledoTask.from_array (values);
+			var t = new ToodledoTask.from_array (values, this, t_config);
 			t.config = c;
 			l.add(t); return 0;}, null);
 
