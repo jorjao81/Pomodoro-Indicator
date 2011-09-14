@@ -678,8 +678,12 @@ public class Main : GLib.Object
 			Posix.system("mpg321 " + ToodledoConfig.base_dir + "/icons/Apple_3g_Ring.mp3");
 		}
 	
-			
-		task.timer = task.timer + (default_length + minutes_left + 1)*60; // yes, its + minutes_left
+		if(minutes_left == 0) {
+			task.timer = task.timer + (30)*60;
+		}
+		else {			
+			task.timer = task.timer + (default_length + minutes_left + 1)*60; // yes, its + minutes_left
+		}
 		minutes_left = default_length + 1;
 		indicator.set_status(IndicatorStatus.ACTIVE);
 		task.save_both ();
